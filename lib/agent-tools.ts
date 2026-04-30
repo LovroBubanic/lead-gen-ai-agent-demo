@@ -1,6 +1,7 @@
 import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { parseBookMeetingIsoToUtc } from "@/lib/meeting-datetime";
 import { asImagePathList, publicListingImageUrl } from "@/lib/listing-images";
 
 export const captureLeadInputSchema = z.object({
@@ -9,13 +10,23 @@ export const captureLeadInputSchema = z.object({
   intent: z.string().describe("What they want in one sentence"),
   conversationSummary: z
     .string()
-    .describe("2–4 sentences summarizing the conversation for the owner"),
+    .describe(
+      "2–4 sentences for the owner. Use today's actual date when referring to 'today'; do not invent random past years."
+    ),
 });
 
 export const bookMeetingInputSchema = z.object({
   title: z.string().describe("Short meeting title, e.g. Intro call with Acme"),
-  startAtIso: z.string().describe("Start time as ISO-8601 datetime"),
-  endAtIso: z.string().describe("End time as ISO-8601 datetime"),
+  startAtIso: z
+    .string()
+    .describe(
+      "Start as ISO-8601. Prefer an explicit offset (2026-05-05T15:00:00+02:00) or Z (UTC). If you omit the offset, the server treats the wall time as BOOKING_INPUT_TIMEZONE (default UTC)."
+    ),
+  endAtIso: z
+    .string()
+    .describe(
+      "End as ISO-8601 with same rules as startAtIso (offset or Z strongly recommended)."
+    ),
   attendeeName: z.string().optional(),
   attendeeEmail: z.string().email().optional(),
   notes: z.string().optional().describe("Optional internal notes"),
@@ -68,9 +79,9 @@ export async function executeCaptureLead(
 export async function executeBookMeeting(input: BookMeetingInput): Promise<
   { ok: true } | { ok: false; error: string }
 > {
-  const startAt = new Date(input.startAtIso);
-  const endAt = new Date(input.endAtIso);
-  if (Number.isNaN(startAt.getTime()) || Number.isNaN(endAt.getTime())) {
+  const startAt = parseBookMeetingIsoToUtc(input.startAtIso);
+  const endAt = parseBookMeetingIsoToUtc(input.endAtIso);
+  if (!startAt || !endAt) {
     return { ok: false, error: "Invalid datetime" };
   }
   if (endAt <= startAt) {

@@ -13,6 +13,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
+import { formatDashboardDateTime } from "@/lib/dashboard-datetime";
 import { cn } from "@/lib/utils";
 import type { SerializedMeeting } from "./types";
 
@@ -196,28 +197,14 @@ export function MeetingDrawer({
                                   <Clock className="h-3.5 w-3.5 shrink-0" />
                                   <span className="min-w-0 break-words">
                                     Start:{" "}
-                                    {start.toLocaleString(undefined, {
-                                      weekday: "short",
-                                      month: "short",
-                                      day: "numeric",
-                                      year: "numeric",
-                                      hour: "numeric",
-                                      minute: "2-digit",
-                                    })}
+                                    {formatDashboardDateTime(m.startAt)}
                                   </span>
                                 </span>
                                 <span className="inline-flex flex-wrap items-center gap-2">
                                   <Clock className="h-3.5 w-3.5 shrink-0" />
                                   <span className="min-w-0 break-words">
                                     End:{" "}
-                                    {end.toLocaleString(undefined, {
-                                      weekday: "short",
-                                      month: "short",
-                                      day: "numeric",
-                                      year: "numeric",
-                                      hour: "numeric",
-                                      minute: "2-digit",
-                                    })}
+                                    {formatDashboardDateTime(m.endAt)}
                                   </span>
                                 </span>
                                 <span className="inline-flex items-center gap-2 sm:col-span-2">
@@ -327,10 +314,7 @@ export function MeetingDrawer({
                             <div className="flex flex-col gap-0.5">
                               <p className="text-[11px] text-[var(--muted)]">
                                 Saved{" "}
-                                {new Date(m.createdAt).toLocaleString(undefined, {
-                                  dateStyle: "medium",
-                                  timeStyle: "short",
-                                })}
+                                {formatDashboardDateTime(m.createdAt)}
                               </p>
                               <p className="break-all font-mono text-[10px] text-[var(--muted)]">
                                 {m.id}

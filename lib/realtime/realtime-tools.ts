@@ -17,7 +17,7 @@ export const REALTIME_SESSION_TOOLS = [
         conversationSummary: {
           type: "string",
           description:
-            "2–4 sentences summarizing the conversation for the owner",
+            "2–4 sentences for the owner; use the real session date when mentioning 'today', never random past years.",
         },
       },
       required: ["name", "email", "intent", "conversationSummary"],
@@ -27,7 +27,7 @@ export const REALTIME_SESSION_TOOLS = [
     type: "function" as const,
     name: "bookMeeting",
     description:
-      "Save a calendar booking after the visitor agrees to a concrete date, time, and how to connect (Google Meet, Zoom, or phone). Use ISO-8601 datetimes with timezone when possible. Store any link or phone number they confirmed in locationDetail.",
+      "Save a calendar booking after the visitor agrees to a concrete date, time, and how to connect. Use ISO-8601 start/end with timezone offset (+02:00) or Z; naive wall times use server BOOKING_INPUT_TIMEZONE (default UTC). Put Meet/Zoom link or phone in locationDetail.",
     parameters: {
       type: "object",
       properties: {
@@ -37,11 +37,13 @@ export const REALTIME_SESSION_TOOLS = [
         },
         startAtIso: {
           type: "string",
-          description: "Start time as ISO-8601 datetime",
+          description:
+            "Start as ISO-8601 with offset (recommended), e.g. 2026-05-05T15:00:00+02:00",
         },
         endAtIso: {
           type: "string",
-          description: "End time as ISO-8601 datetime",
+          description:
+            "End as ISO-8601 with offset (recommended), same rules as startAtIso",
         },
         attendeeName: { type: "string", description: "Guest name" },
         attendeeEmail: { type: "string", description: "Guest email" },

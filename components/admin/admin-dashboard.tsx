@@ -6,12 +6,13 @@ import {
   BookOpen,
   Bot,
   CalendarDays,
+  ChevronDown,
+  Copy,
   FileText,
   Filter,
   LayoutDashboard,
   LogOut,
   Image as ImageIcon,
-  Mail,
   MessageSquare,
   Phone,
   Search,
@@ -29,6 +30,10 @@ import {
   startOfLocalDay,
   toDayKey,
 } from "@/lib/admin-meeting-dates";
+import {
+  formatDashboardDateTime,
+  formatRelativeOrAbsolute,
+} from "@/lib/dashboard-datetime";
 import { CalendarView } from "./calendar-view";
 import { MeetingDrawer } from "./meeting-drawer";
 import type {
@@ -90,27 +95,6 @@ function startOfWeek(d: Date) {
   return t;
 }
 
-function formatRelative(iso: string): string {
-  const now = Date.now();
-  const then = new Date(iso).getTime();
-  const diff = then - now;
-  const abs = Math.abs(diff);
-  const minute = 60_000;
-  const hour = 60 * minute;
-  const day = 24 * hour;
-  if (abs < minute) return diff >= 0 ? "in a moment" : "just now";
-  if (abs < hour) {
-    const m = Math.round(abs / minute);
-    return diff >= 0 ? `in ${m}m` : `${m}m ago`;
-  }
-  if (abs < day) {
-    const h = Math.round(abs / hour);
-    return diff >= 0 ? `in ${h}h` : `${h}h ago`;
-  }
-  const d = Math.round(abs / day);
-  return diff >= 0 ? `in ${d}d` : `${d}d ago`;
-}
-
 function initials(name: string | null, email: string | null) {
   const base = (name ?? email ?? "?").trim();
   if (!base) return "?";
@@ -120,6 +104,22 @@ function initials(name: string | null, email: string | null) {
     .map((p) => p[0]?.toUpperCase() ?? "")
     .join("");
   return letters || base[0].toUpperCase();
+}
+
+function leadDetailsPlainText(l: SerializedLead): string {
+  const captured = formatDashboardDateTime(l.createdAt);
+  return [
+    `Lead ID: ${l.id}`,
+    `Captured: ${captured}`,
+    `Name: ${l.name?.trim() || "—"}`,
+    `Email: ${l.email?.trim() || "—"}`,
+    "",
+    "Intent / topic:",
+    l.intent?.trim() || "—",
+    "",
+    "Conversation summary (highlights):",
+    l.summary?.trim() || "—",
+  ].join("\n");
 }
 
 function avatarGradient(seed: string) {
@@ -149,6 +149,10 @@ export function AdminDashboard({
     SerializedMeeting[]
   >([]);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [expandedLeadIds, setExpandedLeadIds] = useState<Set<string>>(
+    () => new Set()
+  );
+  const [leadCopyFlashId, setLeadCopyFlashId] = useState<string | null>(null);
 
   const filteredLeads = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -243,6 +247,22 @@ export function AdminDashboard({
     },
     [meetings, openDayDrawer]
   );
+
+  const toggleLeadExpanded = useCallback((id: string) => {
+    setExpandedLeadIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const copyLeadDetails = useCallback((l: SerializedLead) => {
+    void navigator.clipboard.writeText(leadDetailsPlainText(l)).then(() => {
+      setLeadCopyFlashId(l.id);
+      window.setTimeout(() => setLeadCopyFlashId(null), 1600);
+    });
+  }, []);
 
   const pendingNavId = `admin-tab-${tab}`;
 
@@ -485,7 +505,7 @@ export function AdminDashboard({
                                   </p>
                                 </div>
                                 <span className="text-[10px] text-[var(--muted)]">
-                                  {formatRelative(l.createdAt)}
+                                  {formatRelativeOrAbsolute(l.createdAt)}
                                 </span>
                               </motion.li>
                             ))}
@@ -602,7 +622,6 @@ export function AdminDashboard({
                       ) : (
                         <ul className="flex flex-col divide-y divide-[var(--border)]">
                           {recentBookings.slice(0, 8).map((m, i) => {
-                            const start = new Date(m.startAt);
                             return (
                               <motion.li
                                 key={m.id}
@@ -620,17 +639,11 @@ export function AdminDashboard({
                                       {m.title}
                                     </span>
                                     <span className="shrink-0 text-[10px] text-[var(--muted)]">
-                                      {formatRelative(m.createdAt)}
+                                      {formatRelativeOrAbsolute(m.createdAt)}
                                     </span>
                                   </div>
                                   <p className="text-xs text-[var(--muted)]">
-                                    {start.toLocaleString(undefined, {
-                                      weekday: "short",
-                                      month: "short",
-                                      day: "numeric",
-                                      hour: "numeric",
-                                      minute: "2-digit",
-                                    })}
+                                    {formatDashboardDateTime(m.startAt)}
                                     {m.attendeeName
                                       ? ` · ${m.attendeeName}`
                                       : ""}
@@ -697,66 +710,194 @@ export function AdminDashboard({
                     }
                   />
                 ) : (
-                  <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)]/85 shadow-[var(--shadow-soft)] backdrop-blur-md">
-                    <div className="grid grid-cols-[1.4fr_1.6fr_1.4fr_2fr_0.8fr] border-b border-[var(--border)] bg-[var(--surface-muted)]/60 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
-                      <span>Name</span>
-                      <span>Email</span>
-                      <span>Intent</span>
-                      <span className="hidden lg:block">Summary</span>
-                      <span className="text-right">Created</span>
-                    </div>
-                    <ul className="divide-y divide-[var(--border)]">
-                      <AnimatePresence initial={false}>
-                        {filteredLeads.map((l, i) => (
-                          <motion.li
-                            key={l.id}
-                            initial={{ opacity: 0, y: 6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: -4 }}
-                            transition={{ delay: Math.min(i * 0.02, 0.25) }}
-                            className="grid grid-cols-[1.4fr_1.6fr_1.4fr_2fr_0.8fr] items-center gap-2 px-4 py-3 text-sm transition hover:bg-[var(--surface-muted)]/60"
-                          >
-                            <span className="flex items-center gap-2 min-w-0">
-                              <span
-                                className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white"
-                                style={{
-                                  background: avatarGradient(
-                                    l.id + (l.email ?? "")
-                                  ),
-                                }}
+                  <div className="flex flex-col gap-3">
+                    <p className="text-xs text-[var(--muted)]">
+                      Click a lead to expand full intent and conversation highlights.
+                      Use copy to grab everything for your CRM or email.
+                    </p>
+                    <div className="overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)]/85 shadow-[var(--shadow-soft)] backdrop-blur-md">
+                      <ul className="divide-y divide-[var(--border)]">
+                        <AnimatePresence initial={false}>
+                          {filteredLeads.map((l, i) => {
+                            const expanded = expandedLeadIds.has(l.id);
+                            return (
+                              <motion.li
+                                key={l.id}
+                                layout
+                                initial={{ opacity: 0, y: 6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                exit={{ opacity: 0, y: -4 }}
+                                transition={{ delay: Math.min(i * 0.02, 0.25) }}
+                                className="bg-[var(--surface)]"
                               >
-                                {initials(l.name, l.email)}
-                              </span>
-                              <span className="truncate font-medium">
-                                {l.name ?? "—"}
-                              </span>
-                            </span>
-                            <span className="truncate text-[var(--muted)]">
-                              {l.email ? (
-                                <a
-                                  href={`mailto:${l.email}`}
-                                  className="inline-flex items-center gap-1 text-[var(--primary)] hover:underline"
+                                <button
+                                  type="button"
+                                  onClick={() => toggleLeadExpanded(l.id)}
+                                  aria-expanded={expanded}
+                                  className="flex w-full items-start gap-3 px-4 py-3.5 text-left text-sm transition hover:bg-[var(--surface-muted)]/50"
                                 >
-                                  <Mail className="h-3 w-3" />
-                                  {l.email}
-                                </a>
-                              ) : (
-                                "—"
-                              )}
-                            </span>
-                            <span className="truncate text-[var(--muted)]">
-                              {l.intent ?? "—"}
-                            </span>
-                            <span className="hidden truncate text-[var(--muted)] lg:block">
-                              {l.summary ?? "—"}
-                            </span>
-                            <span className="whitespace-nowrap text-right text-[11px] text-[var(--muted)]">
-                              {formatRelative(l.createdAt)}
-                            </span>
-                          </motion.li>
-                        ))}
-                      </AnimatePresence>
-                    </ul>
+                                  <span
+                                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white"
+                                    style={{
+                                      background: avatarGradient(
+                                        l.id + (l.email ?? "")
+                                      ),
+                                    }}
+                                  >
+                                    {initials(l.name, l.email)}
+                                  </span>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                      <span className="font-semibold text-[var(--foreground)]">
+                                        {l.name?.trim() || "Unnamed lead"}
+                                      </span>
+                                      <span className="text-[11px] text-[var(--muted)]">
+                                        {formatRelativeOrAbsolute(l.createdAt)}
+                                      </span>
+                                    </div>
+                                    <p className="mt-0.5 truncate text-xs text-[var(--muted)]">
+                                      {l.email ? (
+                                        <span className="text-[var(--primary)]">
+                                          {l.email}
+                                        </span>
+                                      ) : (
+                                        "No email"
+                                      )}
+                                    </p>
+                                    {!expanded && (l.intent || l.summary) ? (
+                                      <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-[var(--muted)]">
+                                        {l.summary?.trim() ||
+                                          l.intent?.trim() ||
+                                          ""}
+                                      </p>
+                                    ) : null}
+                                  </div>
+                                  <ChevronDown
+                                    className={cn(
+                                      "mt-1 h-4 w-4 shrink-0 text-[var(--muted)] transition-transform duration-200",
+                                      expanded && "rotate-180"
+                                    )}
+                                    aria-hidden
+                                  />
+                                </button>
+                                <AnimatePresence initial={false}>
+                                  {expanded ? (
+                                    <motion.div
+                                      key="detail"
+                                      initial={{ height: 0, opacity: 0 }}
+                                      animate={{ height: "auto", opacity: 1 }}
+                                      exit={{ height: 0, opacity: 0 }}
+                                      transition={{
+                                        duration: 0.22,
+                                        ease: [0.22, 1, 0.36, 1],
+                                      }}
+                                      className="overflow-hidden border-t border-[var(--border)] bg-[var(--surface-muted)]/35"
+                                    >
+                                      <div className="space-y-4 px-4 py-4">
+                                        <div className="flex flex-wrap items-center justify-between gap-2">
+                                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+                                            Full lead record
+                                          </p>
+                                          <button
+                                            type="button"
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              copyLeadDetails(l);
+                                            }}
+                                            className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-[11px] font-medium text-[var(--foreground)] transition hover:border-[var(--primary)]/40"
+                                          >
+                                            <Copy className="h-3 w-3" />
+                                            {leadCopyFlashId === l.id
+                                              ? "Copied"
+                                              : "Copy all"}
+                                          </button>
+                                        </div>
+                                        <dl className="grid gap-3 text-sm">
+                                          <div>
+                                            <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                                              Email
+                                            </dt>
+                                            <dd className="mt-1 break-all">
+                                              {l.email ? (
+                                                <a
+                                                  href={`mailto:${l.email}`}
+                                                  className="text-[var(--primary)] hover:underline"
+                                                >
+                                                  {l.email}
+                                                </a>
+                                              ) : (
+                                                <span className="text-[var(--muted)]">
+                                                  —
+                                                </span>
+                                              )}
+                                            </dd>
+                                          </div>
+                                          <div>
+                                            <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                                              Intent / topic
+                                            </dt>
+                                            <dd className="mt-1 whitespace-pre-wrap break-words leading-relaxed text-[var(--foreground)]">
+                                              {l.intent?.trim() || (
+                                                <span className="text-[var(--muted)]">
+                                                  —
+                                                </span>
+                                              )}
+                                            </dd>
+                                          </div>
+                                          <div>
+                                            <dt className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                                              <MessageSquare className="h-3 w-3" />
+                                              Conversation highlights
+                                            </dt>
+                                            <dd className="mt-1 space-y-2">
+                                              <p className="text-[10px] leading-snug text-[var(--muted)]">
+                                                Text below is written by the AI
+                                                for you — any dates inside it are
+                                                not verified. Use{" "}
+                                                <strong>Captured at</strong> for
+                                                when this lead was saved.
+                                              </p>
+                                              <div className="max-h-[min(70vh,28rem)] overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-[13px] leading-relaxed text-[var(--foreground)]">
+                                                {l.summary?.trim() || (
+                                                  <span className="text-[var(--muted)]">
+                                                    No summary was stored for
+                                                    this lead (the agent may not
+                                                    have called capture with a
+                                                    summary).
+                                                  </span>
+                                                )}
+                                              </div>
+                                            </dd>
+                                          </div>
+                                          <div>
+                                            <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                                              Lead ID
+                                            </dt>
+                                            <dd className="mt-1 break-all font-mono text-xs text-[var(--muted)]">
+                                              {l.id}
+                                            </dd>
+                                          </div>
+                                          <div>
+                                            <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                                              Captured at
+                                            </dt>
+                                            <dd className="mt-1 text-xs text-[var(--foreground)]">
+                                              {formatDashboardDateTime(
+                                                l.createdAt
+                                              )}
+                                            </dd>
+                                          </div>
+                                        </dl>
+                                      </div>
+                                    </motion.div>
+                                  ) : null}
+                                </AnimatePresence>
+                              </motion.li>
+                            );
+                          })}
+                        </AnimatePresence>
+                      </ul>
+                    </div>
                   </div>
                 )}
               </motion.div>
@@ -1230,18 +1371,15 @@ function OverviewHero({
                   {nextMeeting.title}
                 </p>
                 <p className="text-sm text-[var(--muted)]">
-                  {new Date(nextMeeting.startAt).toLocaleString(undefined, {
-                    weekday: "short",
-                    month: "short",
-                    day: "numeric",
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}{" "}
-                  –{" "}
-                  {new Date(nextMeeting.endAt).toLocaleTimeString(undefined, {
-                    hour: "numeric",
-                    minute: "2-digit",
-                  })}
+                  <span className="font-medium text-[var(--foreground)]">
+                    Start:
+                  </span>{" "}
+                  {formatDashboardDateTime(nextMeeting.startAt)}
+                  <br />
+                  <span className="font-medium text-[var(--foreground)]">
+                    End:
+                  </span>{" "}
+                  {formatDashboardDateTime(nextMeeting.endAt)}
                 </p>
                 <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
                   {nextMeeting.meetingType ? (
@@ -1281,10 +1419,7 @@ function OverviewHero({
                     {latestMeeting.title}
                   </p>
                   <p className="text-xs text-[var(--muted)]">
-                    {new Date(latestMeeting.startAt).toLocaleString(undefined, {
-                      dateStyle: "medium",
-                      timeStyle: "short",
-                    })}
+                    {formatDashboardDateTime(latestMeeting.startAt)}
                   </p>
                   <span className="text-[11px] font-medium text-[var(--primary)]">
                     Open details →
@@ -1382,7 +1517,7 @@ function UpcomingMeetingsList({
                   </p>
                 </div>
                 <span className="shrink-0 text-[11px] text-[var(--muted)]">
-                  {formatRelative(m.startAt)}
+                  {formatRelativeOrAbsolute(m.startAt)}
                 </span>
               </button>
             </motion.li>
