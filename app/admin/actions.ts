@@ -6,7 +6,6 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { DASHBOARD_SESSION_COOKIE } from "@/lib/dashboard-constants";
 import { signDashboardSession, verifyDashboardCookie } from "@/lib/dashboard-session";
-import { extractPdfText } from "@/lib/extract-pdf-text";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { AGENT_SETTINGS_ID } from "@/lib/customer-ai-settings";
@@ -161,6 +160,7 @@ export async function uploadKnowledgePdf(formData: FormData) {
   const buffer = Buffer.from(await file.arrayBuffer());
   let text: string;
   try {
+    const { extractPdfText } = await import("@/lib/extract-pdf-text");
     text = await extractPdfText(buffer);
   } catch {
     return;
