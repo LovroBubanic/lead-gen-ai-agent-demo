@@ -5,10 +5,7 @@ import {
   Calendar,
   Clock,
   Copy,
-  ExternalLink,
-  Link2,
   Mail,
-  MapPin,
   Phone,
   Trash2,
   User,
@@ -36,19 +33,7 @@ function formatDay(d: Date) {
   });
 }
 
-function formatTimeRange(start: Date, end: Date) {
-  const s = start.toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-  const e = end.toLocaleTimeString([], {
-    hour: "numeric",
-    minute: "2-digit",
-  });
-  return `${s} — ${e}`;
-}
-
-function humanDuration(start: Date, end: Date) {
+function formatDay(d: Date) {
   const mins = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
   const hours = Math.floor(mins / 60);
   const minsRem = mins % 60;
@@ -127,7 +112,7 @@ export function MeetingDrawer({
             animate={{ x: 0 }}
             exit={{ x: "100%" }}
             transition={{ type: "spring", stiffness: 320, damping: 34 }}
-            className="fixed right-0 top-0 z-50 flex h-[100dvh] w-full max-w-lg flex-col overflow-hidden border-l border-[var(--border)] bg-[var(--surface)]/95 shadow-[var(--shadow-elevated)] backdrop-blur-xl"
+            className="fixed right-0 top-0 z-50 flex h-[100dvh] w-full max-w-2xl flex-col overflow-hidden border-l border-[var(--border)] bg-[var(--surface)]/95 shadow-[var(--shadow-elevated)] backdrop-blur-xl"
           >
             <div className="flex items-start justify-between gap-3 border-b border-[var(--border)] px-5 py-4">
               <div>
@@ -203,17 +188,41 @@ export function MeetingDrawer({
                                   </span>
                                 ) : null}
                               </div>
-                              <h3 className="mt-2 text-base font-semibold leading-snug tracking-tight">
+                              <h3 className="mt-2 break-words text-base font-semibold leading-snug tracking-tight">
                                 {m.title}
                               </h3>
                               <div className="mt-2 grid grid-cols-1 gap-1.5 text-sm text-[var(--muted)] sm:grid-cols-2">
-                                <span className="inline-flex items-center gap-2">
-                                  <Clock className="h-3.5 w-3.5" />
-                                  {formatTimeRange(start, end)}
+                                <span className="inline-flex flex-wrap items-center gap-2">
+                                  <Clock className="h-3.5 w-3.5 shrink-0" />
+                                  <span className="min-w-0 break-words">
+                                    Start:{" "}
+                                    {start.toLocaleString(undefined, {
+                                      weekday: "short",
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                      hour: "numeric",
+                                      minute: "2-digit",
+                                    })}
+                                  </span>
                                 </span>
-                                <span className="inline-flex items-center gap-2">
-                                  <span className="inline-block h-2 w-2 rounded-full bg-[var(--primary)]" />
-                                  {humanDuration(start, end)}
+                                <span className="inline-flex flex-wrap items-center gap-2">
+                                  <Clock className="h-3.5 w-3.5 shrink-0" />
+                                  <span className="min-w-0 break-words">
+                                    End:{" "}
+                                    {end.toLocaleString(undefined, {
+                                      weekday: "short",
+                                      month: "short",
+                                      day: "numeric",
+                                      year: "numeric",
+                                      hour: "numeric",
+                                      minute: "2-digit",
+                                    })}
+                                  </span>
+                                </span>
+                                <span className="inline-flex items-center gap-2 sm:col-span-2">
+                                  <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-[var(--primary)]" />
+                                  {humanDuration(start, end)} total
                                 </span>
                               </div>
 
@@ -227,61 +236,54 @@ export function MeetingDrawer({
                                   </span>
                                 ) : null}
                                 {m.attendeeEmail ? (
-                                  <span className="inline-flex items-center gap-2">
-                                    <Mail className="h-3.5 w-3.5 text-[var(--muted)]" />
+                                  <span className="inline-flex flex-wrap items-center gap-2">
+                                    <Mail className="h-3.5 w-3.5 shrink-0 text-[var(--muted)]" />
                                     <a
                                       href={`mailto:${m.attendeeEmail}`}
-                                      className="truncate text-[var(--primary)] hover:underline"
+                                      className="min-w-0 break-all text-[var(--primary)] hover:underline"
                                     >
                                       {m.attendeeEmail}
                                     </a>
                                   </span>
                                 ) : null}
                                 {m.locationDetail ? (
-                                  <span className="inline-flex items-start gap-2">
-                                    {urlLike ? (
-                                      <Link2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--muted)]" />
-                                    ) : (
-                                      <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[var(--muted)]" />
-                                    )}
-                                    <span className="min-w-0 flex-1">
-                                      {urlLike ? (
-                                        <a
-                                          href={m.locationDetail}
-                                          target="_blank"
-                                          rel="noreferrer noopener"
-                                          className="inline-flex min-w-0 items-center gap-1 truncate text-[var(--primary)] hover:underline"
-                                        >
-                                          <span className="truncate">
-                                            {m.locationDetail}
-                                          </span>
-                                          <ExternalLink className="h-3 w-3 shrink-0" />
-                                        </a>
-                                      ) : (
-                                        <span className="truncate">
-                                          {m.locationDetail}
-                                        </span>
-                                      )}
+                                  <span className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/40 p-3">
+                                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                                      {urlLike ? "Link" : "Location / dial-in"}
                                     </span>
+                                    {urlLike ? (
+                                      <a
+                                        href={m.locationDetail}
+                                        target="_blank"
+                                        rel="noreferrer noopener"
+                                        className="break-all text-sm font-medium text-[var(--primary)] hover:underline"
+                                      >
+                                        {m.locationDetail}
+                                      </a>
+                                    ) : (
+                                      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-[var(--foreground)]">
+                                        {m.locationDetail}
+                                      </p>
+                                    )}
                                     <button
                                       type="button"
                                       onClick={() => {
                                         void navigator.clipboard
                                           .writeText(m.locationDetail ?? "")
                                           .then(() => {
-                                            setCopied(m.id);
+                                            setCopied(m.id + "-loc");
                                             window.setTimeout(
                                               () => setCopied(null),
                                               1200
                                             );
                                           });
                                       }}
-                                      className="rounded-md border border-[var(--border)] bg-[var(--surface-muted)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--muted)] transition hover:border-[var(--primary)]/40 hover:text-[var(--foreground)]"
+                                      className="self-start rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[10px] font-medium text-[var(--muted)] transition hover:border-[var(--primary)]/40 hover:text-[var(--foreground)]"
                                     >
-                                      {copied === m.id ? "Copied" : (
+                                      {copied === m.id + "-loc" ? "Copied" : (
                                         <span className="inline-flex items-center gap-1">
                                           <Copy className="h-3 w-3" />
-                                          Copy
+                                          Copy link or text
                                         </span>
                                       )}
                                     </button>
@@ -291,10 +293,29 @@ export function MeetingDrawer({
 
                               {m.notes ? (
                                 <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/60 p-3 text-sm">
-                                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-                                    Notes
-                                  </p>
-                                  <p className="whitespace-pre-wrap text-[var(--foreground)]">
+                                  <div className="mb-1 flex items-center justify-between gap-2">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                                      Notes
+                                    </p>
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        void navigator.clipboard
+                                          .writeText(m.notes ?? "")
+                                          .then(() => {
+                                            setCopied(m.id + "-notes");
+                                            window.setTimeout(
+                                              () => setCopied(null),
+                                              1200
+                                            );
+                                          });
+                                      }}
+                                      className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--muted)] transition hover:border-[var(--primary)]/40"
+                                    >
+                                      {copied === m.id + "-notes" ? "Copied" : "Copy"}
+                                    </button>
+                                  </div>
+                                  <p className="whitespace-pre-wrap break-words text-[var(--foreground)]">
                                     {m.notes}
                                   </p>
                                 </div>
@@ -302,14 +323,19 @@ export function MeetingDrawer({
                             </div>
                           </div>
 
-                          <div className="mt-4 flex items-center justify-between">
-                            <p className="text-[11px] text-[var(--muted)]">
-                              Saved{" "}
-                              {new Date(m.createdAt).toLocaleString(undefined, {
-                                dateStyle: "medium",
-                                timeStyle: "short",
-                              })}
-                            </p>
+                          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex flex-col gap-0.5">
+                              <p className="text-[11px] text-[var(--muted)]">
+                                Saved{" "}
+                                {new Date(m.createdAt).toLocaleString(undefined, {
+                                  dateStyle: "medium",
+                                  timeStyle: "short",
+                                })}
+                              </p>
+                              <p className="break-all font-mono text-[10px] text-[var(--muted)]">
+                                {m.id}
+                              </p>
+                            </div>
                             <form action={deleteAction}>
                               <input type="hidden" name="id" value={m.id} />
                               <button

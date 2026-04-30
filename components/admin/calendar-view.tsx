@@ -11,11 +11,17 @@ import {
   Dot,
 } from "lucide-react";
 import { useMemo, useState } from "react";
+import {
+  startOfMonthContaining,
+  toDayKey,
+} from "@/lib/admin-meeting-dates";
 import { cn } from "@/lib/utils";
 import type { SerializedMeeting } from "./types";
 
 type CalendarViewProps = {
   meetings: SerializedMeeting[];
+  /** First month shown (typically derived from bookings). */
+  initialCursorMonth?: Date;
   onSelectDay: (day: Date, dayMeetings: SerializedMeeting[]) => void;
   selectedDayKey?: string | null;
 };
@@ -35,13 +41,6 @@ const MONTHS = [
   "November",
   "December",
 ];
-
-function toDayKey(d: Date) {
-  const y = d.getFullYear();
-  const m = (d.getMonth() + 1).toString().padStart(2, "0");
-  const day = d.getDate().toString().padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 function sameDay(a: Date, b: Date) {
   return (
@@ -74,6 +73,7 @@ function iconForType(type: string | null) {
 
 export function CalendarView({
   meetings,
+  initialCursorMonth,
   onSelectDay,
   selectedDayKey,
 }: CalendarViewProps) {
@@ -82,12 +82,11 @@ export function CalendarView({
     t.setHours(0, 0, 0, 0);
     return t;
   }, []);
-  const [cursor, setCursor] = useState(() => {
-    const d = new Date();
-    d.setDate(1);
-    d.setHours(0, 0, 0, 0);
-    return d;
-  });
+  const [cursor, setCursor] = useState(() =>
+    startOfMonthContaining(
+      initialCursorMonth ? new Date(initialCursorMonth) : new Date()
+    )
+  );
 
   const { meetingsByDay, monthsWithMeetings } = useMemo(() => {
     const byDay = new Map<string, SerializedMeeting[]>();
@@ -217,7 +216,7 @@ export function CalendarView({
               whileHover={inMonth ? { y: -1 } : undefined}
               whileTap={inMonth ? { scale: 0.98 } : undefined}
               onClick={() => onSelectDay(d, dayMeetings)}
-              disabled={!inMonth}
+              disabled={!inMonth && !hasMeetings}
               className={cn(
                 "group relative flex min-h-[84px] flex-col items-start gap-1.5 bg-[var(--surface)] p-2 text-left transition sm:min-h-[100px]",
                 !inMonth && "bg-[var(--surface-muted)]/40 text-[var(--muted)]/60",

@@ -23,7 +23,12 @@ import {
   PlusCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import {
+  defaultOwnerCalendarMonth,
+  startOfLocalDay,
+  toDayKey,
+} from "@/lib/admin-meeting-dates";
 import { CalendarView } from "./calendar-view";
 import { MeetingDrawer } from "./meeting-drawer";
 import type {
@@ -76,13 +81,6 @@ const TABS: {
   { id: "knowledge", label: "Knowledge", icon: BookOpen },
   { id: "assistant", label: "AI replies", icon: Bot },
 ];
-
-function toDayKey(d: Date) {
-  const y = d.getFullYear();
-  const m = (d.getMonth() + 1).toString().padStart(2, "0");
-  const day = d.getDate().toString().padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
 
 function startOfWeek(d: Date) {
   const t = new Date(d);
@@ -163,6 +161,7 @@ export function AdminDashboard({
   }, [leads, query]);
 
   const stats = useMemo(() => {
+    const nowTs = Date.now();
     const now = new Date();
     now.setHours(0, 0, 0, 0);
     const weekStart = startOfWeek(now);
@@ -170,11 +169,12 @@ export function AdminDashboard({
     weekEnd.setDate(weekEnd.getDate() + 7);
 
     const upcoming = meetings.filter(
-      (m) => new Date(m.startAt).getTime() >= now.getTime()
+      (m) => new Date(m.endAt).getTime() >= nowTs
     );
     const thisWeek = meetings.filter((m) => {
-      const t = new Date(m.startAt).getTime();
-      return t >= weekStart.getTime() && t < weekEnd.getTime();
+      const s = new Date(m.startAt).getTime();
+      const e = new Date(m.endAt).getTime();
+      return s < weekEnd.getTime() && e > weekStart.getTime();
     });
     const last7d = leads.filter(
       (l) => Date.now() - new Date(l.createdAt).getTime() < 7 * 86_400_000
@@ -192,22 +192,57 @@ export function AdminDashboard({
 
   const nextMeeting = useMemo(() => {
     const now = Date.now();
-    return (
-      meetings
-        .filter((m) => new Date(m.startAt).getTime() >= now)
-        .sort(
-          (a, b) =>
-            new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
-        )[0] ?? null
-    );
+    const candidates = meetings
+      .filter((m) => new Date(m.endAt).getTime() >= now)
+      .sort(
+        (a, b) =>
+          new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+      );
+    return candidates[0] ?? null;
   }, [meetings]);
 
-  const handleSelectDay = (day: Date, dayMeetings: SerializedMeeting[]) => {
-    setSelectedDay(day);
-    setSelectedDayKey(toDayKey(day));
-    setSelectedDayMeetings(dayMeetings);
-    setDrawerOpen(true);
-  };
+  const latestRecordedMeeting = useMemo(() => {
+    if (meetings.length === 0) return null;
+    return [...meetings].sort(
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    )[0]!;
+  }, [meetings]);
+
+  const recentBookings = useMemo(
+    () =>
+      [...meetings].sort(
+        (a, b) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      ),
+    [meetings]
+  );
+
+  const calendarInitialMonth = useMemo(
+    () => defaultOwnerCalendarMonth(meetings),
+    [meetings]
+  );
+
+  const openDayDrawer = useCallback(
+    (day: Date, dayMeetings: SerializedMeeting[]) => {
+      setSelectedDay(day);
+      setSelectedDayKey(toDayKey(day));
+      setSelectedDayMeetings(dayMeetings);
+      setDrawerOpen(true);
+    },
+    []
+  );
+
+  const openMeetingInDrawer = useCallback(
+    (m: SerializedMeeting) => {
+      const day = startOfLocalDay(new Date(m.startAt));
+      const key = toDayKey(day);
+      const dayMeetings = meetings.filter(
+        (x) => toDayKey(new Date(x.startAt)) === key
+      );
+      openDayDrawer(day, dayMeetings);
+    },
+    [meetings, openDayDrawer]
+  );
 
   const pendingNavId = `admin-tab-${tab}`;
 
@@ -357,7 +392,11 @@ export function AdminDashboard({
                 transition={{ duration: 0.25 }}
                 className="flex flex-col gap-6"
               >
-                <OverviewHero nextMeeting={nextMeeting} />
+                <OverviewHero
+                  nextMeeting={nextMeeting}
+                  latestMeeting={latestRecordedMeeting}
+                  onOpenMeeting={openMeetingInDrawer}
+                />
 
                 <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                   <StatCard
@@ -370,7 +409,7 @@ export function AdminDashboard({
                   <StatCard
                     title="Meetings upcoming"
                     value={stats.upcomingMeetings}
-                    hint={`${stats.thisWeekMeetings} this week`}
+                    hint={`${stats.thisWeekMeetings} this calendar week`}
                     gradient="from-[#22d3ee] to-[#6366f1]"
                     delay={0.05}
                   />
@@ -539,6 +578,72 @@ export function AdminDashboard({
                     </SpotlightCard>
                   </FadeIn>
                 </div>
+
+                <FadeIn delay={0.06}>
+                  <SpotlightCard>
+                    <div className="flex flex-col gap-4 p-5">
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="text-sm font-semibold tracking-tight">
+                          Recent bookings
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => setTab("calendar")}
+                          className="text-xs font-medium text-[var(--primary)] hover:underline"
+                        >
+                          Open calendar
+                        </button>
+                      </div>
+                      {meetings.length === 0 ? (
+                        <p className="text-sm text-[var(--muted)]">
+                          When visitors confirm a slot in chat or voice, each
+                          booking appears here and on the calendar.
+                        </p>
+                      ) : (
+                        <ul className="flex flex-col divide-y divide-[var(--border)]">
+                          {recentBookings.slice(0, 8).map((m, i) => {
+                            const start = new Date(m.startAt);
+                            return (
+                              <motion.li
+                                key={m.id}
+                                initial={{ opacity: 0, y: 4 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: i * 0.04 }}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => openMeetingInDrawer(m)}
+                                  className="flex w-full flex-col gap-1 py-3 text-left transition first:pt-0 last:pb-0 hover:bg-[var(--surface-muted)]/50"
+                                >
+                                  <div className="flex flex-wrap items-center justify-between gap-2">
+                                    <span className="min-w-0 flex-1 break-words text-sm font-medium">
+                                      {m.title}
+                                    </span>
+                                    <span className="shrink-0 text-[10px] text-[var(--muted)]">
+                                      {formatRelative(m.createdAt)}
+                                    </span>
+                                  </div>
+                                  <p className="text-xs text-[var(--muted)]">
+                                    {start.toLocaleString(undefined, {
+                                      weekday: "short",
+                                      month: "short",
+                                      day: "numeric",
+                                      hour: "numeric",
+                                      minute: "2-digit",
+                                    })}
+                                    {m.attendeeName
+                                      ? ` · ${m.attendeeName}`
+                                      : ""}
+                                  </p>
+                                </button>
+                              </motion.li>
+                            );
+                          })}
+                        </ul>
+                      )}
+                    </div>
+                  </SpotlightCard>
+                </FadeIn>
               </motion.div>
             ) : null}
 
@@ -681,20 +786,14 @@ export function AdminDashboard({
 
                 <CalendarView
                   meetings={meetings}
-                  onSelectDay={handleSelectDay}
+                  initialCursorMonth={calendarInitialMonth}
+                  onSelectDay={openDayDrawer}
                   selectedDayKey={selectedDayKey}
                 />
 
                 <UpcomingMeetingsList
                   meetings={meetings}
-                  onSelect={(m) => {
-                    const d = new Date(m.startAt);
-                    d.setHours(0, 0, 0, 0);
-                    const dayMeetings = meetings.filter(
-                      (x) => toDayKey(new Date(x.startAt)) === toDayKey(d)
-                    );
-                    handleSelectDay(d, dayMeetings);
-                  }}
+                  onSelect={openMeetingInDrawer}
                 />
               </motion.div>
             ) : null}
@@ -1085,8 +1184,12 @@ function StatCard({
 
 function OverviewHero({
   nextMeeting,
+  latestMeeting,
+  onOpenMeeting,
 }: {
   nextMeeting: SerializedMeeting | null;
+  latestMeeting: SerializedMeeting | null;
+  onOpenMeeting: (m: SerializedMeeting) => void;
 }) {
   return (
     <FadeIn>
@@ -1118,8 +1221,12 @@ function OverviewHero({
               Next meeting
             </p>
             {nextMeeting ? (
-              <div className="flex flex-col gap-1">
-                <p className="text-base font-semibold tracking-tight">
+              <button
+                type="button"
+                onClick={() => onOpenMeeting(nextMeeting)}
+                className="flex flex-col gap-2 rounded-xl text-left transition hover:bg-[var(--surface-muted)]/60"
+              >
+                <p className="break-words text-base font-semibold tracking-tight">
                   {nextMeeting.title}
                 </p>
                 <p className="text-sm text-[var(--muted)]">
@@ -1129,9 +1236,14 @@ function OverviewHero({
                     day: "numeric",
                     hour: "numeric",
                     minute: "2-digit",
+                  })}{" "}
+                  –{" "}
+                  {new Date(nextMeeting.endAt).toLocaleTimeString(undefined, {
+                    hour: "numeric",
+                    minute: "2-digit",
                   })}
                 </p>
-                <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
+                <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--muted)]">
                   {nextMeeting.meetingType ? (
                     <span className="inline-flex items-center gap-1 rounded-full bg-[var(--primary)]/10 px-2 py-0.5 font-medium text-[var(--primary)]">
                       {nextMeeting.meetingType === "phone" ? (
@@ -1143,13 +1255,45 @@ function OverviewHero({
                     </span>
                   ) : null}
                   {nextMeeting.attendeeName ? (
-                    <span>{nextMeeting.attendeeName}</span>
+                    <span className="break-words">{nextMeeting.attendeeName}</span>
                   ) : null}
                 </div>
+                {nextMeeting.locationDetail ? (
+                  <p className="line-clamp-2 break-all text-xs text-[var(--primary)]">
+                    {nextMeeting.locationDetail}
+                  </p>
+                ) : null}
+                <span className="text-[11px] font-medium text-[var(--primary)]">
+                  View full details →
+                </span>
+              </button>
+            ) : !nextMeeting && latestMeeting ? (
+              <div className="flex flex-col gap-2">
+                <p className="text-xs text-[var(--muted)]">
+                  No upcoming or in-progress slot. Latest recorded booking:
+                </p>
+                <button
+                  type="button"
+                  onClick={() => onOpenMeeting(latestMeeting)}
+                  className="flex flex-col gap-1 rounded-xl text-left transition hover:bg-[var(--surface-muted)]/60"
+                >
+                  <p className="break-words text-sm font-semibold">
+                    {latestMeeting.title}
+                  </p>
+                  <p className="text-xs text-[var(--muted)]">
+                    {new Date(latestMeeting.startAt).toLocaleString(undefined, {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}
+                  </p>
+                  <span className="text-[11px] font-medium text-[var(--primary)]">
+                    Open details →
+                  </span>
+                </button>
               </div>
             ) : (
               <p className="text-sm text-[var(--muted)]">
-                No upcoming meetings yet. New bookings will land here.
+                No meetings yet. New bookings will land here and on the calendar.
               </p>
             )}
           </div>
@@ -1186,14 +1330,20 @@ function UpcomingMeetingsList({
   const upcoming = useMemo(() => {
     const now = Date.now();
     return meetings
-      .filter((m) => new Date(m.startAt).getTime() >= now)
-      .slice(0, 6);
+      .filter((m) => new Date(m.endAt).getTime() >= now)
+      .sort(
+        (a, b) =>
+          new Date(a.startAt).getTime() - new Date(b.startAt).getTime()
+      )
+      .slice(0, 8);
   }, [meetings]);
   if (upcoming.length === 0) return null;
   return (
     <div className="rounded-3xl border border-[var(--border)] bg-[var(--surface)]/80 p-4 shadow-[var(--shadow-soft)] backdrop-blur-md">
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-sm font-semibold tracking-tight">Upcoming</h3>
+        <h3 className="text-sm font-semibold tracking-tight">
+          Open & upcoming
+        </h3>
         <span className="text-[10px] uppercase tracking-[0.18em] text-[var(--muted)]">
           next {upcoming.length}
         </span>
@@ -1222,8 +1372,8 @@ function UpcomingMeetingsList({
                   </span>
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{m.title}</p>
-                  <p className="truncate text-xs text-[var(--muted)]">
+                  <p className="break-words text-sm font-medium">{m.title}</p>
+                  <p className="break-words text-xs text-[var(--muted)]">
                     {start.toLocaleTimeString(undefined, {
                       hour: "numeric",
                       minute: "2-digit",
@@ -1231,7 +1381,7 @@ function UpcomingMeetingsList({
                     {m.attendeeName ? ` · ${m.attendeeName}` : ""}
                   </p>
                 </div>
-                <span className="text-[11px] text-[var(--muted)]">
+                <span className="shrink-0 text-[11px] text-[var(--muted)]">
                   {formatRelative(m.startAt)}
                 </span>
               </button>
