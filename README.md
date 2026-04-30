@@ -234,6 +234,3 @@ Scripts call **`node ./node_modules/next/...`** and **`node node_modules/prisma/
 - Engineering rules: **`../.cursorrules`** (one level up from `Project/`, at the repo root).
 
 When you change behaviour (new env vars, routes, or tools), update **this README** in the same change so the next deploy stays documented.
-#   l e a d - g e n - a i - a g e n t - d e m o  
- #   l e a d - g e n - a i - a g e n t - d e m o  
- 
