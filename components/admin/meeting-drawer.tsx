@@ -33,7 +33,7 @@ function formatDay(d: Date) {
   });
 }
 
-function formatDay(d: Date) {
+function humanDuration(start: Date, end: Date) {
   const mins = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
   const hours = Math.floor(mins / 60);
   const minsRem = mins % 60;
