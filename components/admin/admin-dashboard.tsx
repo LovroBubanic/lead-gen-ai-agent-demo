@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  AlertTriangle,
   BookOpen,
   Bot,
   CalendarDays,
@@ -58,6 +59,8 @@ type AdminDashboardProps = {
   customerLocale: string;
   actions: DashboardActions;
   supabaseConfigured: boolean;
+  /** Set when Prisma could not load lists (missing env, DB down, schema drift). */
+  dataLoadError?: string | null;
 };
 
 type TabId = "overview" | "leads" | "calendar" | "knowledge" | "assistant";
@@ -138,6 +141,7 @@ export function AdminDashboard({
   customerLocale,
   actions,
   supabaseConfigured,
+  dataLoadError = null,
 }: AdminDashboardProps) {
   const [tab, setTab] = useState<TabId>("overview");
   const [query, setQuery] = useState("");
@@ -209,6 +213,36 @@ export function AdminDashboard({
 
   return (
     <AuroraBackground className="min-h-[100dvh]">
+      {dataLoadError ? (
+        <div
+          className="border-b border-amber-500/35 bg-amber-500/10 px-4 py-3 text-sm text-amber-950 dark:text-amber-100"
+          role="alert"
+        >
+          <div className="mx-auto flex max-w-6xl gap-2">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+            <div>
+              <p className="font-semibold">Dashboard data could not be loaded</p>
+              <p className="mt-1 text-[13px] opacity-90">{dataLoadError}</p>
+              <p className="mt-2 text-[12px] opacity-80">
+                Confirm{" "}
+                <code className="rounded bg-black/10 px-1 py-0.5 dark:bg-white/10">
+                  DATABASE_URL
+                </code>{" "}
+                and{" "}
+                <code className="rounded bg-black/10 px-1 py-0.5 dark:bg-white/10">
+                  DIRECT_URL
+                </code>{" "}
+                on the host (e.g. Vercel), run{" "}
+                <code className="rounded bg-black/10 px-1 py-0.5 dark:bg-white/10">
+                  prisma db push
+                </code>{" "}
+                or migrations, then redeploy. Public chat can still open because it
+                does not query leads or meetings.
+              </p>
+            </div>
+          </div>
+        </div>
+      ) : null}
       <motion.header
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}

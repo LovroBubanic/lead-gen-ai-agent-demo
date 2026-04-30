@@ -20,17 +20,15 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminPage() {
-  const supabaseConfigured = Boolean(getSupabaseServiceRole());
-  const [leadsRaw, docsRaw, meetingsRaw, customerInstructions, customerLocale] =
-    await Promise.all([
-      prisma.lead.findMany({ orderBy: { createdAt: "desc" } }),
-      prisma.knowledgeDocument.findMany({ orderBy: { createdAt: "desc" } }),
-      prisma.meeting.findMany({ orderBy: { startAt: "asc" } }),
-      getCustomerResponseInstructions(),
-      getAgentLocale(),
-    ]);
-
+function serializeRows(
+  leadsRaw: Awaited<ReturnType<typeof prisma.lead.findMany>>,
+  docsRaw: Awaited<ReturnType<typeof prisma.knowledgeDocument.findMany>>,
+  meetingsRaw: Awaited<ReturnType<typeof prisma.meeting.findMany>>
+): {
+  leads: SerializedLead[];
+  docs: SerializedKnowledge[];
+  meetings: SerializedMeeting[];
+} {
   const leads: SerializedLead[] = leadsRaw.map((l) => ({
     id: l.id,
     name: l.name,
@@ -64,6 +62,49 @@ export default async function AdminPage() {
     createdAt: m.createdAt.toISOString(),
   }));
 
+  return { leads, docs, meetings };
+}
+
+export default async function AdminPage() {
+  const supabaseConfigured = Boolean(getSupabaseServiceRole());
+
+  let leads: SerializedLead[] = [];
+  let docs: SerializedKnowledge[] = [];
+  let meetings: SerializedMeeting[] = [];
+  let customerInstructions = "";
+  let customerLocale = "en";
+  let dataLoadError: string | null = null;
+
+  try {
+    const [leadsRaw, docsRaw, meetingsRaw, instructions, locale] =
+      await Promise.all([
+        prisma.lead.findMany({ orderBy: { createdAt: "desc" } }),
+        prisma.knowledgeDocument.findMany({ orderBy: { createdAt: "desc" } }),
+        prisma.meeting.findMany({ orderBy: { startAt: "asc" } }),
+        getCustomerResponseInstructions(),
+        getAgentLocale(),
+      ]);
+    const serialized = serializeRows(leadsRaw, docsRaw, meetingsRaw);
+    leads = serialized.leads;
+    docs = serialized.docs;
+    meetings = serialized.meetings;
+    customerInstructions = instructions;
+    customerLocale = locale;
+  } catch (err) {
+    console.error("[admin] failed to load dashboard data", err);
+    if (process.env.NODE_ENV === "development") {
+      dataLoadError =
+        err instanceof Error ? err.message : "Unknown error while querying the database.";
+    } else {
+      dataLoadError =
+        "Database query failed. Check DATABASE_URL / DIRECT_URL and that Prisma schema is applied.";
+    }
+    [customerInstructions, customerLocale] = await Promise.all([
+      getCustomerResponseInstructions(),
+      getAgentLocale(),
+    ]);
+  }
+
   return (
     <AdminDashboard
       leads={leads}
@@ -72,6 +113,7 @@ export default async function AdminPage() {
       customerInstructions={customerInstructions}
       customerLocale={customerLocale}
       supabaseConfigured={supabaseConfigured}
+      dataLoadError={dataLoadError}
       actions={{
         addKnowledgeDocument,
         deleteKnowledgeForm,
