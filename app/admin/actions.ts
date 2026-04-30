@@ -7,7 +7,9 @@ import { redirect } from "next/navigation";
 import { DASHBOARD_SESSION_COOKIE } from "@/lib/dashboard-constants";
 import { signDashboardSession, verifyDashboardCookie } from "@/lib/dashboard-session";
 import { Prisma } from "@prisma/client";
+import { z } from "zod";
 import { prisma } from "@/lib/prisma";
+import { parseBookMeetingIsoToUtc } from "@/lib/meeting-datetime";
 import { AGENT_SETTINGS_ID } from "@/lib/customer-ai-settings";
 import { asImagePathList, isHttpImageRef } from "@/lib/listing-images";
 import { getSupabaseServiceRole } from "@/lib/supabase-server";
@@ -201,6 +203,91 @@ export async function deleteMeetingForm(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   await prisma.meeting.delete({ where: { id } });
+  revalidatePath("/admin");
+}
+
+const MAX_LEAD_TEXT = 100_000;
+
+export async function deleteLeadForm(formData: FormData) {
+  await assertDashboard();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  await prisma.lead.delete({ where: { id } });
+  revalidatePath("/admin");
+}
+
+export async function updateLeadForm(formData: FormData) {
+  await assertDashboard();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  const name = String(formData.get("name") ?? "").trim() || null;
+  const rawEmail = String(formData.get("email") ?? "").trim();
+  let email: string | null = null;
+  if (rawEmail) {
+    const ok = z.string().email().safeParse(rawEmail);
+    if (!ok.success) return;
+    email = rawEmail;
+  }
+  let intent = String(formData.get("intent") ?? "");
+  let summary = String(formData.get("summary") ?? "");
+  if (intent.length > MAX_LEAD_TEXT) intent = intent.slice(0, MAX_LEAD_TEXT);
+  if (summary.length > MAX_LEAD_TEXT) summary = summary.slice(0, MAX_LEAD_TEXT);
+
+  await prisma.lead.update({
+    where: { id },
+    data: {
+      name,
+      email,
+      intent: intent.trim() || null,
+      summary: summary.trim() || null,
+    },
+  });
+  revalidatePath("/admin");
+}
+
+const MAX_MEETING_NOTES = 50_000;
+
+export async function updateMeetingForm(formData: FormData) {
+  await assertDashboard();
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  const title = String(formData.get("title") ?? "").trim();
+  const startIso = String(formData.get("startAtIso") ?? "").trim();
+  const endIso = String(formData.get("endAtIso") ?? "").trim();
+  if (!title || !startIso || !endIso) return;
+  const startAt = parseBookMeetingIsoToUtc(startIso);
+  const endAt = parseBookMeetingIsoToUtc(endIso);
+  if (!startAt || !endAt || endAt.getTime() <= startAt.getTime()) return;
+
+  let notes = String(formData.get("notes") ?? "");
+  if (notes.length > MAX_MEETING_NOTES) notes = notes.slice(0, MAX_MEETING_NOTES);
+  const locationDetail =
+    String(formData.get("locationDetail") ?? "").trim() || null;
+  const mt = String(formData.get("meetingType") ?? "").trim();
+  const meetingType = ["google_meet", "zoom", "phone", "other"].includes(mt)
+    ? mt
+    : null;
+  const attendeeName = String(formData.get("attendeeName") ?? "").trim() || null;
+  const rawAttEmail = String(formData.get("attendeeEmail") ?? "").trim();
+  let attendeeEmail: string | null = null;
+  if (rawAttEmail) {
+    const ok = z.string().email().safeParse(rawAttEmail);
+    attendeeEmail = ok.success ? rawAttEmail : null;
+  }
+
+  await prisma.meeting.update({
+    where: { id },
+    data: {
+      title,
+      startAt,
+      endAt,
+      notes: notes.trim() || null,
+      locationDetail,
+      meetingType,
+      attendeeName,
+      attendeeEmail,
+    },
+  });
   revalidatePath("/admin");
 }
 

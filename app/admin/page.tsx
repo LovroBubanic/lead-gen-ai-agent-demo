@@ -11,10 +11,13 @@ import { getSupabaseServiceRole } from "@/lib/supabase-server";
 import {
   addKnowledgeDocument,
   deleteKnowledgeForm,
+  deleteLeadForm,
   deleteMeetingForm,
   logoutDashboard,
   saveCustomerInstructions,
   saveCustomerLocale,
+  updateLeadForm,
+  updateMeetingForm,
   uploadKnowledgePdf,
 } from "./actions";
 
@@ -117,11 +120,14 @@ export default async function AdminPage() {
       actions={{
         addKnowledgeDocument,
         deleteKnowledgeForm,
+        deleteLeadForm,
         deleteMeetingForm,
         logoutDashboard,
         uploadKnowledgePdf,
         saveCustomerInstructions,
         saveCustomerLocale,
+        updateLeadForm,
+        updateMeetingForm,
       }}
     />
   );

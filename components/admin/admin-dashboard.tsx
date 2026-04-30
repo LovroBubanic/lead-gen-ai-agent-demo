@@ -14,6 +14,7 @@ import {
   LogOut,
   Image as ImageIcon,
   MessageSquare,
+  Pencil,
   Phone,
   Search,
   Upload,
@@ -24,7 +25,8 @@ import {
   PlusCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useMemo, useState, useTransition } from "react";
 import {
   defaultOwnerCalendarMonth,
   startOfLocalDay,
@@ -54,11 +56,14 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 type DashboardActions = {
   addKnowledgeDocument: (formData: FormData) => void | Promise<void>;
   deleteKnowledgeForm: (formData: FormData) => void | Promise<void>;
+  deleteLeadForm: (formData: FormData) => void | Promise<void>;
   deleteMeetingForm: (formData: FormData) => void | Promise<void>;
   logoutDashboard: () => void | Promise<void>;
   uploadKnowledgePdf: (formData: FormData) => void | Promise<void>;
   saveCustomerInstructions: (formData: FormData) => void | Promise<void>;
   saveCustomerLocale: (formData: FormData) => void | Promise<void>;
+  updateLeadForm: (formData: FormData) => void | Promise<void>;
+  updateMeetingForm: (formData: FormData) => void | Promise<void>;
 };
 
 type AdminDashboardProps = {
@@ -153,6 +158,9 @@ export function AdminDashboard({
     () => new Set()
   );
   const [leadCopyFlashId, setLeadCopyFlashId] = useState<string | null>(null);
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [leadEditId, setLeadEditId] = useState<string | null>(null);
 
   const filteredLeads = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -251,8 +259,12 @@ export function AdminDashboard({
   const toggleLeadExpanded = useCallback((id: string) => {
     setExpandedLeadIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
+      if (next.has(id)) {
+        next.delete(id);
+        setLeadEditId((cur) => (cur === id ? null : cur));
+      } else {
+        next.add(id);
+      }
       return next;
     });
   }, []);
@@ -798,96 +810,243 @@ export function AdminDashboard({
                                           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
                                             Full lead record
                                           </p>
-                                          <button
-                                            type="button"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              copyLeadDetails(l);
-                                            }}
-                                            className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-[11px] font-medium text-[var(--foreground)] transition hover:border-[var(--primary)]/40"
-                                          >
-                                            <Copy className="h-3 w-3" />
-                                            {leadCopyFlashId === l.id
-                                              ? "Copied"
-                                              : "Copy all"}
-                                          </button>
+                                          <div className="flex flex-wrap items-center gap-2">
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                copyLeadDetails(l);
+                                              }}
+                                              className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-[11px] font-medium text-[var(--foreground)] transition hover:border-[var(--primary)]/40"
+                                            >
+                                              <Copy className="h-3 w-3" />
+                                              {leadCopyFlashId === l.id
+                                                ? "Copied"
+                                                : "Copy all"}
+                                            </button>
+                                            {leadEditId !== l.id ? (
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setLeadEditId(l.id);
+                                                }}
+                                                className="inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-[11px] font-medium text-[var(--foreground)] transition hover:border-[var(--primary)]/40"
+                                              >
+                                                <Pencil className="h-3 w-3" />
+                                                Edit
+                                              </button>
+                                            ) : (
+                                              <button
+                                                type="button"
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  setLeadEditId(null);
+                                                }}
+                                                className="rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-[11px] font-medium text-[var(--muted)] transition hover:text-[var(--foreground)]"
+                                              >
+                                                Cancel edit
+                                              </button>
+                                            )}
+                                            <button
+                                              type="button"
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                if (
+                                                  !confirm(
+                                                    "Delete this lead permanently?"
+                                                  )
+                                                )
+                                                  return;
+                                                const fd = new FormData();
+                                                fd.set("id", l.id);
+                                                startTransition(() => {
+                                                  void Promise.resolve(
+                                                    actions.deleteLeadForm(fd)
+                                                  ).then(() => {
+                                                      setExpandedLeadIds(
+                                                        (prev) => {
+                                                          const n = new Set(
+                                                            prev
+                                                          );
+                                                          n.delete(l.id);
+                                                          return n;
+                                                        }
+                                                      );
+                                                      setLeadEditId((cur) =>
+                                                        cur === l.id ? null : cur
+                                                      );
+                                                      router.refresh();
+                                                    });
+                                                });
+                                              }}
+                                              className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-[var(--surface)] px-3 py-1 text-[11px] font-medium text-red-600 transition hover:bg-red-500/10 dark:text-red-400"
+                                            >
+                                              <Trash2 className="h-3 w-3" />
+                                              Delete
+                                            </button>
+                                          </div>
                                         </div>
-                                        <dl className="grid gap-3 text-sm">
-                                          <div>
-                                            <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-                                              Email
-                                            </dt>
-                                            <dd className="mt-1 break-all">
-                                              {l.email ? (
-                                                <a
-                                                  href={`mailto:${l.email}`}
-                                                  className="text-[var(--primary)] hover:underline"
-                                                >
-                                                  {l.email}
-                                                </a>
-                                              ) : (
-                                                <span className="text-[var(--muted)]">
-                                                  —
-                                                </span>
-                                              )}
-                                            </dd>
-                                          </div>
-                                          <div>
-                                            <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-                                              Intent / topic
-                                            </dt>
-                                            <dd className="mt-1 whitespace-pre-wrap break-words leading-relaxed text-[var(--foreground)]">
-                                              {l.intent?.trim() || (
-                                                <span className="text-[var(--muted)]">
-                                                  —
-                                                </span>
-                                              )}
-                                            </dd>
-                                          </div>
-                                          <div>
-                                            <dt className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-                                              <MessageSquare className="h-3 w-3" />
-                                              Conversation highlights
-                                            </dt>
-                                            <dd className="mt-1 space-y-2">
-                                              <p className="text-[10px] leading-snug text-[var(--muted)]">
-                                                Text below is written by the AI
-                                                for you — any dates inside it are
-                                                not verified. Use{" "}
-                                                <strong>Captured at</strong> for
-                                                when this lead was saved.
-                                              </p>
-                                              <div className="max-h-[min(70vh,28rem)] overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-[13px] leading-relaxed text-[var(--foreground)]">
-                                                {l.summary?.trim() || (
-                                                  <span className="text-[var(--muted)]">
-                                                    No summary was stored for
-                                                    this lead (the agent may not
-                                                    have called capture with a
-                                                    summary).
-                                                  </span>
-                                                )}
-                                              </div>
-                                            </dd>
-                                          </div>
-                                          <div>
-                                            <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-                                              Lead ID
-                                            </dt>
-                                            <dd className="mt-1 break-all font-mono text-xs text-[var(--muted)]">
-                                              {l.id}
-                                            </dd>
-                                          </div>
-                                          <div>
-                                            <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
-                                              Captured at
-                                            </dt>
-                                            <dd className="mt-1 text-xs text-[var(--foreground)]">
+                                        {leadEditId === l.id ? (
+                                          <form
+                                            key={`edit-${l.id}`}
+                                            className="space-y-3"
+                                            onSubmit={(e) => {
+                                              e.preventDefault();
+                                              const fd = new FormData(
+                                                e.currentTarget
+                                              );
+                                              startTransition(() => {
+                                                void Promise.resolve(
+                                                  actions.updateLeadForm(fd)
+                                                ).then(() => {
+                                                    setLeadEditId(null);
+                                                    router.refresh();
+                                                  });
+                                              });
+                                            }}
+                                          >
+                                            <input
+                                              type="hidden"
+                                              name="id"
+                                              value={l.id}
+                                            />
+                                            <label className="flex flex-col gap-1 text-xs">
+                                              <span className="font-medium text-[var(--muted)]">
+                                                Name
+                                              </span>
+                                              <input
+                                                name="name"
+                                                defaultValue={l.name ?? ""}
+                                                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+                                              />
+                                            </label>
+                                            <label className="flex flex-col gap-1 text-xs">
+                                              <span className="font-medium text-[var(--muted)]">
+                                                Email
+                                              </span>
+                                              <input
+                                                name="email"
+                                                type="email"
+                                                defaultValue={l.email ?? ""}
+                                                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+                                              />
+                                            </label>
+                                            <label className="flex flex-col gap-1 text-xs">
+                                              <span className="font-medium text-[var(--muted)]">
+                                                Intent / topic
+                                              </span>
+                                              <textarea
+                                                name="intent"
+                                                defaultValue={l.intent ?? ""}
+                                                rows={3}
+                                                className="resize-y rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+                                              />
+                                            </label>
+                                            <label className="flex flex-col gap-1 text-xs">
+                                              <span className="font-medium text-[var(--muted)]">
+                                                Conversation highlights
+                                              </span>
+                                              <textarea
+                                                name="summary"
+                                                defaultValue={l.summary ?? ""}
+                                                rows={8}
+                                                className="max-h-[40vh] resize-y rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm"
+                                              />
+                                            </label>
+                                            <p className="text-[10px] text-[var(--muted)]">
+                                              Capture time (
                                               {formatDashboardDateTime(
                                                 l.createdAt
                                               )}
-                                            </dd>
-                                          </div>
-                                        </dl>
+                                              ) is not editable here.
+                                            </p>
+                                            <button
+                                              type="submit"
+                                              disabled={isPending}
+                                              className="inline-flex w-fit items-center gap-2 rounded-full bg-[linear-gradient(135deg,#6366f1,#8b5cf6)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
+                                            >
+                                              Save lead
+                                            </button>
+                                          </form>
+                                        ) : (
+                                          <dl className="grid gap-3 text-sm">
+                                            <div>
+                                              <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                                                Email
+                                              </dt>
+                                              <dd className="mt-1 break-all">
+                                                {l.email ? (
+                                                  <a
+                                                    href={`mailto:${l.email}`}
+                                                    className="text-[var(--primary)] hover:underline"
+                                                  >
+                                                    {l.email}
+                                                  </a>
+                                                ) : (
+                                                  <span className="text-[var(--muted)]">
+                                                    —
+                                                  </span>
+                                                )}
+                                              </dd>
+                                            </div>
+                                            <div>
+                                              <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                                                Intent / topic
+                                              </dt>
+                                              <dd className="mt-1 whitespace-pre-wrap break-words leading-relaxed text-[var(--foreground)]">
+                                                {l.intent?.trim() || (
+                                                  <span className="text-[var(--muted)]">
+                                                    —
+                                                  </span>
+                                                )}
+                                              </dd>
+                                            </div>
+                                            <div>
+                                              <dt className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                                                <MessageSquare className="h-3 w-3" />
+                                                Conversation highlights
+                                              </dt>
+                                              <dd className="mt-1 space-y-2">
+                                                <p className="text-[10px] leading-snug text-[var(--muted)]">
+                                                  Text below is written by the
+                                                  AI for you — any dates inside
+                                                  it are not verified. Use{" "}
+                                                  <strong>Captured at</strong>{" "}
+                                                  for when this lead was saved.
+                                                </p>
+                                                <div className="max-h-[min(70vh,28rem)] overflow-y-auto whitespace-pre-wrap break-words rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 text-[13px] leading-relaxed text-[var(--foreground)]">
+                                                  {l.summary?.trim() || (
+                                                    <span className="text-[var(--muted)]">
+                                                      No summary was stored for
+                                                      this lead (the agent may
+                                                      not have called capture
+                                                      with a summary).
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              </dd>
+                                            </div>
+                                            <div>
+                                              <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                                                Lead ID
+                                              </dt>
+                                              <dd className="mt-1 break-all font-mono text-xs text-[var(--muted)]">
+                                                {l.id}
+                                              </dd>
+                                            </div>
+                                            <div>
+                                              <dt className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+                                                Captured at
+                                              </dt>
+                                              <dd className="mt-1 text-xs text-[var(--foreground)]">
+                                                {formatDashboardDateTime(
+                                                  l.createdAt
+                                                )}
+                                              </dd>
+                                            </div>
+                                          </dl>
+                                        )}
                                       </div>
                                     </motion.div>
                                   ) : null}
@@ -1278,6 +1437,7 @@ export function AdminDashboard({
         meetings={selectedDayMeetings}
         onClose={() => setDrawerOpen(false)}
         deleteAction={actions.deleteMeetingForm}
+        updateMeetingForm={actions.updateMeetingForm}
       />
     </AuroraBackground>
   );

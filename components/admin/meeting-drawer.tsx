@@ -6,14 +6,17 @@ import {
   Clock,
   Copy,
   Mail,
+  Pencil,
   Phone,
   Trash2,
   User,
   Video,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { formatDashboardDateTime } from "@/lib/dashboard-datetime";
+import { isoToDatetimeLocalValue } from "@/lib/datetime-local";
 import { cn } from "@/lib/utils";
 import type { SerializedMeeting } from "./types";
 
@@ -23,6 +26,7 @@ type MeetingDrawerProps = {
   meetings: SerializedMeeting[];
   onClose: () => void;
   deleteAction: (formData: FormData) => void | Promise<void>;
+  updateMeetingForm: (formData: FormData) => void | Promise<void>;
 };
 
 function formatDay(d: Date) {
@@ -72,11 +76,18 @@ export function MeetingDrawer({
   meetings,
   onClose,
   deleteAction,
+  updateMeetingForm,
 }: MeetingDrawerProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [copied, setCopied] = useState<string | null>(null);
+  const [editingMeetingId, setEditingMeetingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open) {
+      setEditingMeetingId(null);
+      return;
+    }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
@@ -153,6 +164,8 @@ export function MeetingDrawer({
                     const meta = typeMeta(m.meetingType);
                     const urlLike = isUrl(m.locationDetail);
                     const Icon = meta.Icon;
+                    const isEditing = editingMeetingId === m.id;
+
                     return (
                       <motion.li
                         key={m.id}
@@ -168,169 +181,359 @@ export function MeetingDrawer({
                           }}
                         />
                         <div className="p-4">
-                          <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 text-xs font-medium text-[var(--muted)]">
-                                <span
-                                  className={cn(
-                                    "inline-flex items-center gap-1 rounded-full px-2 py-0.5"
-                                  )}
-                                  style={{
-                                    background: `color-mix(in oklab, ${meta.color} 15%, transparent)`,
-                                    color: meta.color,
-                                  }}
-                                >
-                                  <Icon className="h-3 w-3" />
-                                  {meta.label}
-                                </span>
-                                {m.bookedByAgent ? (
-                                  <span className="inline-flex items-center rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] font-medium text-[var(--muted)]">
-                                    Booked by agent
+                          {isEditing ? (
+                            <form
+                              className="space-y-3"
+                              onSubmit={(e) => {
+                                e.preventDefault();
+                                const form = e.currentTarget;
+                                const fd = new FormData(form);
+                                const sl = String(
+                                  fd.get("startLocal") ?? ""
+                                ).trim();
+                                const el = String(
+                                  fd.get("endLocal") ?? ""
+                                ).trim();
+                                fd.delete("startLocal");
+                                fd.delete("endLocal");
+                                if (!sl || !el) return;
+                                const s = new Date(sl);
+                                const en = new Date(el);
+                                if (
+                                  Number.isNaN(s.getTime()) ||
+                                  Number.isNaN(en.getTime()) ||
+                                  en <= s
+                                ) {
+                                  return;
+                                }
+                                fd.set("startAtIso", s.toISOString());
+                                fd.set("endAtIso", en.toISOString());
+                                startTransition(() => {
+                                  void Promise.resolve(
+                                    updateMeetingForm(fd)
+                                  ).then(() => {
+                                    setEditingMeetingId(null);
+                                    router.refresh();
+                                  });
+                                });
+                              }}
+                            >
+                              <input type="hidden" name="id" value={m.id} />
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
+                                Edit meeting
+                              </p>
+                              <label className="flex flex-col gap-1 text-xs">
+                                <span className="text-[var(--muted)]">Title</span>
+                                <input
+                                  name="title"
+                                  required
+                                  defaultValue={m.title}
+                                  className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]/50 px-3 py-2 text-sm"
+                                />
+                              </label>
+                              <div className="grid gap-2 sm:grid-cols-2">
+                                <label className="flex flex-col gap-1 text-xs">
+                                  <span className="text-[var(--muted)]">
+                                    Start (your local)
                                   </span>
-                                ) : null}
-                              </div>
-                              <h3 className="mt-2 break-words text-base font-semibold leading-snug tracking-tight">
-                                {m.title}
-                              </h3>
-                              <div className="mt-2 grid grid-cols-1 gap-1.5 text-sm text-[var(--muted)] sm:grid-cols-2">
-                                <span className="inline-flex flex-wrap items-center gap-2">
-                                  <Clock className="h-3.5 w-3.5 shrink-0" />
-                                  <span className="min-w-0 break-words">
-                                    Start:{" "}
-                                    {formatDashboardDateTime(m.startAt)}
-                                  </span>
-                                </span>
-                                <span className="inline-flex flex-wrap items-center gap-2">
-                                  <Clock className="h-3.5 w-3.5 shrink-0" />
-                                  <span className="min-w-0 break-words">
-                                    End:{" "}
-                                    {formatDashboardDateTime(m.endAt)}
-                                  </span>
-                                </span>
-                                <span className="inline-flex items-center gap-2 sm:col-span-2">
-                                  <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-[var(--primary)]" />
-                                  {humanDuration(start, end)} total
-                                </span>
-                              </div>
-
-                              <div className="mt-3 flex flex-col gap-1.5 text-sm">
-                                {m.attendeeName ? (
-                                  <span className="inline-flex items-center gap-2">
-                                    <User className="h-3.5 w-3.5 text-[var(--muted)]" />
-                                    <span className="font-medium">
-                                      {m.attendeeName}
-                                    </span>
-                                  </span>
-                                ) : null}
-                                {m.attendeeEmail ? (
-                                  <span className="inline-flex flex-wrap items-center gap-2">
-                                    <Mail className="h-3.5 w-3.5 shrink-0 text-[var(--muted)]" />
-                                    <a
-                                      href={`mailto:${m.attendeeEmail}`}
-                                      className="min-w-0 break-all text-[var(--primary)] hover:underline"
-                                    >
-                                      {m.attendeeEmail}
-                                    </a>
-                                  </span>
-                                ) : null}
-                                {m.locationDetail ? (
-                                  <span className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/40 p-3">
-                                    <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-                                      {urlLike ? "Link" : "Location / dial-in"}
-                                    </span>
-                                    {urlLike ? (
-                                      <a
-                                        href={m.locationDetail}
-                                        target="_blank"
-                                        rel="noreferrer noopener"
-                                        className="break-all text-sm font-medium text-[var(--primary)] hover:underline"
-                                      >
-                                        {m.locationDetail}
-                                      </a>
-                                    ) : (
-                                      <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-[var(--foreground)]">
-                                        {m.locationDetail}
-                                      </p>
+                                  <input
+                                    name="startLocal"
+                                    type="datetime-local"
+                                    required
+                                    defaultValue={isoToDatetimeLocalValue(
+                                      m.startAt
                                     )}
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        void navigator.clipboard
-                                          .writeText(m.locationDetail ?? "")
-                                          .then(() => {
-                                            setCopied(m.id + "-loc");
-                                            window.setTimeout(
-                                              () => setCopied(null),
-                                              1200
-                                            );
-                                          });
-                                      }}
-                                      className="self-start rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[10px] font-medium text-[var(--muted)] transition hover:border-[var(--primary)]/40 hover:text-[var(--foreground)]"
-                                    >
-                                      {copied === m.id + "-loc" ? "Copied" : (
-                                        <span className="inline-flex items-center gap-1">
-                                          <Copy className="h-3 w-3" />
-                                          Copy link or text
-                                        </span>
-                                      )}
-                                    </button>
+                                    className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]/50 px-2 py-2 text-sm"
+                                  />
+                                </label>
+                                <label className="flex flex-col gap-1 text-xs">
+                                  <span className="text-[var(--muted)]">
+                                    End (your local)
                                   </span>
-                                ) : null}
+                                  <input
+                                    name="endLocal"
+                                    type="datetime-local"
+                                    required
+                                    defaultValue={isoToDatetimeLocalValue(
+                                      m.endAt
+                                    )}
+                                    className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]/50 px-2 py-2 text-sm"
+                                  />
+                                </label>
+                              </div>
+                              <label className="flex flex-col gap-1 text-xs">
+                                <span className="text-[var(--muted)]">
+                                  Connection type
+                                </span>
+                                <select
+                                  name="meetingType"
+                                  defaultValue={m.meetingType ?? ""}
+                                  className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]/50 px-3 py-2 text-sm"
+                                >
+                                  <option value="">Not set</option>
+                                  <option value="google_meet">Google Meet</option>
+                                  <option value="zoom">Zoom</option>
+                                  <option value="phone">Phone</option>
+                                  <option value="other">Other</option>
+                                </select>
+                              </label>
+                              <label className="flex flex-col gap-1 text-xs">
+                                <span className="text-[var(--muted)]">
+                                  Guest name
+                                </span>
+                                <input
+                                  name="attendeeName"
+                                  defaultValue={m.attendeeName ?? ""}
+                                  className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]/50 px-3 py-2 text-sm"
+                                />
+                              </label>
+                              <label className="flex flex-col gap-1 text-xs">
+                                <span className="text-[var(--muted)]">
+                                  Guest email
+                                </span>
+                                <input
+                                  name="attendeeEmail"
+                                  type="email"
+                                  defaultValue={m.attendeeEmail ?? ""}
+                                  className="rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]/50 px-3 py-2 text-sm"
+                                />
+                              </label>
+                              <label className="flex flex-col gap-1 text-xs">
+                                <span className="text-[var(--muted)]">
+                                  Link / phone / dial-in
+                                </span>
+                                <textarea
+                                  name="locationDetail"
+                                  defaultValue={m.locationDetail ?? ""}
+                                  rows={3}
+                                  className="resize-y rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]/50 px-3 py-2 text-sm"
+                                />
+                              </label>
+                              <label className="flex flex-col gap-1 text-xs">
+                                <span className="text-[var(--muted)]">Notes</span>
+                                <textarea
+                                  name="notes"
+                                  defaultValue={m.notes ?? ""}
+                                  rows={3}
+                                  className="resize-y rounded-lg border border-[var(--border)] bg-[var(--surface-muted)]/50 px-3 py-2 text-sm"
+                                />
+                              </label>
+                              <div className="flex flex-wrap gap-2 pt-1">
+                                <button
+                                  type="submit"
+                                  disabled={isPending}
+                                  className="inline-flex items-center gap-1.5 rounded-full bg-[linear-gradient(135deg,#6366f1,#8b5cf6)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
+                                >
+                                  Save changes
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingMeetingId(null)}
+                                  className="rounded-full border border-[var(--border)] px-4 py-2 text-sm font-medium text-[var(--muted)] transition hover:bg-[var(--surface-muted)]"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            </form>
+                          ) : (
+                            <>
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-2 text-xs font-medium text-[var(--muted)]">
+                                    <span
+                                      className={cn(
+                                        "inline-flex items-center gap-1 rounded-full px-2 py-0.5"
+                                      )}
+                                      style={{
+                                        background: `color-mix(in oklab, ${meta.color} 15%, transparent)`,
+                                        color: meta.color,
+                                      }}
+                                    >
+                                      <Icon className="h-3 w-3" />
+                                      {meta.label}
+                                    </span>
+                                    {m.bookedByAgent ? (
+                                      <span className="inline-flex items-center rounded-full bg-[var(--surface-muted)] px-2 py-0.5 text-[10px] font-medium text-[var(--muted)]">
+                                        Booked by agent
+                                      </span>
+                                    ) : null}
+                                  </div>
+                                  <h3 className="mt-2 break-words text-base font-semibold leading-snug tracking-tight">
+                                    {m.title}
+                                  </h3>
+                                  <div className="mt-2 grid grid-cols-1 gap-1.5 text-sm text-[var(--muted)] sm:grid-cols-2">
+                                    <span className="inline-flex flex-wrap items-center gap-2">
+                                      <Clock className="h-3.5 w-3.5 shrink-0" />
+                                      <span className="min-w-0 break-words">
+                                        Start:{" "}
+                                        {formatDashboardDateTime(m.startAt)}
+                                      </span>
+                                    </span>
+                                    <span className="inline-flex flex-wrap items-center gap-2">
+                                      <Clock className="h-3.5 w-3.5 shrink-0" />
+                                      <span className="min-w-0 break-words">
+                                        End:{" "}
+                                        {formatDashboardDateTime(m.endAt)}
+                                      </span>
+                                    </span>
+                                    <span className="inline-flex items-center gap-2 sm:col-span-2">
+                                      <span className="inline-block h-2 w-2 shrink-0 rounded-full bg-[var(--primary)]" />
+                                      {humanDuration(start, end)} total
+                                    </span>
+                                  </div>
+
+                                  <div className="mt-3 flex flex-col gap-1.5 text-sm">
+                                    {m.attendeeName ? (
+                                      <span className="inline-flex items-center gap-2">
+                                        <User className="h-3.5 w-3.5 text-[var(--muted)]" />
+                                        <span className="font-medium">
+                                          {m.attendeeName}
+                                        </span>
+                                      </span>
+                                    ) : null}
+                                    {m.attendeeEmail ? (
+                                      <span className="inline-flex flex-wrap items-center gap-2">
+                                        <Mail className="h-3.5 w-3.5 shrink-0 text-[var(--muted)]" />
+                                        <a
+                                          href={`mailto:${m.attendeeEmail}`}
+                                          className="min-w-0 break-all text-[var(--primary)] hover:underline"
+                                        >
+                                          {m.attendeeEmail}
+                                        </a>
+                                      </span>
+                                    ) : null}
+                                    {m.locationDetail ? (
+                                      <span className="flex flex-col gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/40 p-3">
+                                        <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                                          {urlLike
+                                            ? "Link"
+                                            : "Location / dial-in"}
+                                        </span>
+                                        {urlLike ? (
+                                          <a
+                                            href={m.locationDetail}
+                                            target="_blank"
+                                            rel="noreferrer noopener"
+                                            className="break-all text-sm font-medium text-[var(--primary)] hover:underline"
+                                          >
+                                            {m.locationDetail}
+                                          </a>
+                                        ) : (
+                                          <p className="whitespace-pre-wrap break-words text-sm leading-relaxed text-[var(--foreground)]">
+                                            {m.locationDetail}
+                                          </p>
+                                        )}
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            void navigator.clipboard
+                                              .writeText(m.locationDetail ?? "")
+                                              .then(() => {
+                                                setCopied(m.id + "-loc");
+                                                window.setTimeout(
+                                                  () => setCopied(null),
+                                                  1200
+                                                );
+                                              });
+                                          }}
+                                          className="self-start rounded-md border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-[10px] font-medium text-[var(--muted)] transition hover:border-[var(--primary)]/40 hover:text-[var(--foreground)]"
+                                        >
+                                          {copied === m.id + "-loc" ? (
+                                            "Copied"
+                                          ) : (
+                                            <span className="inline-flex items-center gap-1">
+                                              <Copy className="h-3 w-3" />
+                                              Copy link or text
+                                            </span>
+                                          )}
+                                        </button>
+                                      </span>
+                                    ) : null}
+                                  </div>
+
+                                  {m.notes ? (
+                                    <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/60 p-3 text-sm">
+                                      <div className="mb-1 flex items-center justify-between gap-2">
+                                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                                          Notes
+                                        </p>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            void navigator.clipboard
+                                              .writeText(m.notes ?? "")
+                                              .then(() => {
+                                                setCopied(m.id + "-notes");
+                                                window.setTimeout(
+                                                  () => setCopied(null),
+                                                  1200
+                                                );
+                                              });
+                                          }}
+                                          className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--muted)] transition hover:border-[var(--primary)]/40"
+                                        >
+                                          {copied === m.id + "-notes" ? (
+                                            "Copied"
+                                          ) : (
+                                            "Copy"
+                                          )}
+                                        </button>
+                                      </div>
+                                      <p className="whitespace-pre-wrap break-words text-[var(--foreground)]">
+                                        {m.notes}
+                                      </p>
+                                    </div>
+                                  ) : null}
+                                </div>
                               </div>
 
-                              {m.notes ? (
-                                <div className="mt-3 rounded-xl border border-[var(--border)] bg-[var(--surface-muted)]/60 p-3 text-sm">
-                                  <div className="mb-1 flex items-center justify-between gap-2">
-                                    <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
-                                      Notes
-                                    </p>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        void navigator.clipboard
-                                          .writeText(m.notes ?? "")
-                                          .then(() => {
-                                            setCopied(m.id + "-notes");
-                                            window.setTimeout(
-                                              () => setCopied(null),
-                                              1200
-                                            );
-                                          });
-                                      }}
-                                      className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--muted)] transition hover:border-[var(--primary)]/40"
-                                    >
-                                      {copied === m.id + "-notes" ? "Copied" : "Copy"}
-                                    </button>
-                                  </div>
-                                  <p className="whitespace-pre-wrap break-words text-[var(--foreground)]">
-                                    {m.notes}
+                              <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                                <div className="flex flex-col gap-0.5">
+                                  <p className="text-[11px] text-[var(--muted)]">
+                                    Saved{" "}
+                                    {formatDashboardDateTime(m.createdAt)}
+                                  </p>
+                                  <p className="break-all font-mono text-[10px] text-[var(--muted)]">
+                                    {m.id}
                                   </p>
                                 </div>
-                              ) : null}
-                            </div>
-                          </div>
-
-                          <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                            <div className="flex flex-col gap-0.5">
-                              <p className="text-[11px] text-[var(--muted)]">
-                                Saved{" "}
-                                {formatDashboardDateTime(m.createdAt)}
-                              </p>
-                              <p className="break-all font-mono text-[10px] text-[var(--muted)]">
-                                {m.id}
-                              </p>
-                            </div>
-                            <form action={deleteAction}>
-                              <input type="hidden" name="id" value={m.id} />
-                              <button
-                                type="submit"
-                                className="inline-flex items-center gap-1 rounded-full border border-transparent px-2.5 py-1 text-[11px] font-medium text-[var(--muted)] transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-500"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                                Remove
-                              </button>
-                            </form>
-                          </div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      setEditingMeetingId(m.id)
+                                    }
+                                    className="inline-flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface-muted)]/70 px-2.5 py-1 text-[11px] font-medium text-[var(--foreground)] transition hover:border-[var(--primary)]/40"
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                    Edit
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      if (
+                                        !confirm(
+                                          "Remove this meeting from the calendar?"
+                                        )
+                                      )
+                                        return;
+                                      const fd = new FormData();
+                                      fd.set("id", m.id);
+                                      startTransition(() => {
+                                        void Promise.resolve(
+                                          deleteAction(fd)
+                                        ).then(() => router.refresh());
+                                      });
+                                    }}
+                                    className="inline-flex items-center gap-1 rounded-full border border-transparent px-2.5 py-1 text-[11px] font-medium text-[var(--muted)] transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-500"
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                    Remove
+                                  </button>
+                                </div>
+                              </div>
+                            </>
+                          )}
                         </div>
                       </motion.li>
                     );
