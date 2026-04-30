@@ -1,0 +1,56 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  // App runtime: transaction pooler (6543, pgbouncer=true)
+  url       = env("DATABASE_URL")
+  // prisma db push: session pooler (5432, same user postgres.<ref>) — avoids hangs on :6543
+  directUrl = env("DIRECT_URL")
+}
+
+model Lead {
+  id        String   @id @default(cuid())
+  name      String?
+  email     String?
+  intent    String?
+  summary   String?
+  createdAt DateTime @default(now())
+}
+
+model KnowledgeDocument {
+  id         String   @id @default(cuid())
+  title      String
+  content    String   @db.Text
+  sourceType String   @default("text") // text | pdf
+  filePath   String? // Supabase Storage path in bucket `knowledge-pdfs`, if uploaded
+  /// JSON string array: Supabase object paths and/or https URLs for listing photos (chat tool `showListingImage`).
+  imagePaths Json?
+  createdAt  DateTime @default(now())
+}
+
+/// Singleton row (`id = "global"`): how the owner wants the agent to talk to visitors.
+model AgentSettings {
+  id                   String   @id @default("global")
+  customerInstructions String   @db.Text @default("")
+  /// ISO 639-1 language code for visitor UI, chat, and voice (e.g. en, es, de).
+  customerLocale       String   @default("en")
+  updatedAt            DateTime @updatedAt
+}
+
+model Meeting {
+  id              String   @id @default(cuid())
+  title           String
+  startAt         DateTime
+  endAt           DateTime
+  attendeeName    String?
+  attendeeEmail   String?
+  notes           String?  @db.Text
+  /// google_meet | zoom | phone | other — how the owner should join
+  meetingType     String?
+  /// Link (Meet/Zoom) or phone number the visitor agreed to
+  locationDetail  String?  @db.Text
+  bookedByAgent   Boolean  @default(true)
+  createdAt       DateTime @default(now())
+}
