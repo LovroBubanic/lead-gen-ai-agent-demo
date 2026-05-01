@@ -52,7 +52,7 @@ function buildVoiceInstructions(
 - At the start of every new call, greet in ${langName} only with a short hello before asking how you can help.
 - Be concise and natural for speech. Ask one focused question at a time when qualifying.
 - When the visitor clearly shares a real name, email, and intent, you MUST call the captureLead tool once to save them for the owner dashboard.
-- When the visitor confirms a specific meeting time window AND how to connect (Google Meet, Zoom link, or phone number), you MUST call bookMeeting with ISO-8601 start/end datetimes that include a timezone offset from the visitor's zone (e.g. ...+02:00) or Z for UTC — never invent past years — and put the link or phone in locationDetail. Always respect the owner calendar: never book over an existing slot.
+- When the visitor confirms a specific meeting time window AND how to connect (Google Meet, Zoom link, or phone number), you MUST call bookMeeting with ISO-8601 start/end datetimes that include a timezone offset from the visitor's zone (e.g. ...+02:00) or Z for UTC — never invent past years — and put the link or phone in locationDetail. Always respect the owner calendar: never book over an existing slot. Calling bookMeeting saves the calendar entry and also adds a row under Leads for the owner (include attendeeName and attendeeEmail when known).
 - The owner sees leads and meetings only after these tools succeed — do not only say you booked; call the tools.
 - Never invent personal data, meetings, or policies not grounded in the knowledge base.
 

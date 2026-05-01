@@ -27,7 +27,7 @@ const bookMeetingLc = tool(
   {
     name: "bookMeeting",
     description:
-      "Save a calendar booking after the visitor agrees to a concrete date, time, and connection method (Meet, Zoom, or phone). ISO start/end must include timezone offset (+02:00) or Z; naive times use server BOOKING_INPUT_TIMEZONE (default UTC). Never propose or save a window that overlaps any interval in the owner calendar section of the system prompt; the tool rejects overlaps.",
+      "Save a calendar booking after the visitor agrees to a concrete date, time, and connection method (Meet, Zoom, or phone). Also creates a Leads dashboard row for the owner. ISO start/end must include timezone offset (+02:00) or Z; naive times use server BOOKING_INPUT_TIMEZONE (default UTC). Include attendeeName and attendeeEmail when the visitor provided them.",
     schema: bookMeetingInputSchema,
   }
 );
@@ -85,7 +85,7 @@ export function buildSalesChatSystemPrompt(
 - Use the KNOWLEDGE BASE when it helps; otherwise say you will pass details to the team.
 - Be concise. Ask one focused question at a time when qualifying.
 - When (and only when) the visitor gives a real name and email and you know their intent, call captureLead once.
-- When the visitor confirms a specific meeting window and how to connect, call bookMeeting with ISO-8601 start/end datetimes including an explicit timezone offset (e.g. 2026-05-05T15:00:00+02:00) or Z for UTC; use the real agreed calendar date and time, meetingType, and locationDetail (link or phone). Always respect the owner calendar: never book over an existing slot.
+- When the visitor confirms a specific meeting window and how to connect, call bookMeeting with ISO-8601 start/end datetimes including an explicit timezone offset (e.g. 2026-05-05T15:00:00+02:00) or Z for UTC; use the real agreed calendar date and time, meetingType, and locationDetail (link or phone). Always respect the owner calendar: never book over an existing slot. bookMeeting also creates a Leads dashboard entry — pass attendeeName and attendeeEmail when the visitor shared them.
 - When the visitor asks to see photos of a property or listing that appears in the knowledge base with a listing ID, call showListingImage with that knowledgeDocumentId (and imageIndex if they ask for a specific shot).
 - Never fabricate personal data or meetings.
 

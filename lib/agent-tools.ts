@@ -62,6 +62,44 @@ export type ShowListingImageInput = z.infer<typeof showListingImageInputSchema>;
 export type CaptureLeadInput = z.infer<typeof captureLeadInputSchema>;
 export type BookMeetingInput = z.infer<typeof bookMeetingInputSchema>;
 
+const MAX_LEAD_SUMMARY_FROM_BOOKING = 12_000;
+
+/** Dashboard lead row so bookings show under Leads / Recent leads (same DB list as captureLead). */
+function leadDataFromBooking(
+  input: BookMeetingInput,
+  meetingId: string,
+  startAt: Date,
+  endAt: Date
+): { name: string | null; email: string | null; intent: string; summary: string } {
+  const name =
+    input.attendeeName?.trim() ||
+    input.title.trim().slice(0, 200) ||
+    "Visitor (booked)";
+  const email = input.attendeeEmail?.trim() || null;
+  const intent = `Scheduled booking: ${input.title}`.slice(0, 500);
+  const lines = [
+    "Booked via AI assistant (chat or voice call).",
+    `Meeting ID: ${meetingId}`,
+    `Title: ${input.title}`,
+    `Start (UTC): ${startAt.toISOString()}`,
+    `End (UTC): ${endAt.toISOString()}`,
+  ];
+  if (input.meetingType) {
+    lines.push(`Connection: ${input.meetingType}`);
+  }
+  if (input.locationDetail?.trim()) {
+    lines.push(`Location / link: ${input.locationDetail.trim()}`);
+  }
+  if (input.notes?.trim()) {
+    lines.push(`Notes: ${input.notes.trim()}`);
+  }
+  let summary = lines.join("\n");
+  if (summary.length > MAX_LEAD_SUMMARY_FROM_BOOKING) {
+    summary = summary.slice(0, MAX_LEAD_SUMMARY_FROM_BOOKING);
+  }
+  return { name, email, intent, summary };
+}
+
 export async function executeCaptureLead(
   input: CaptureLeadInput
 ): Promise<{ saved: true }> {
@@ -106,7 +144,7 @@ export async function executeBookMeeting(input: BookMeetingInput): Promise<
             error: `That time overlaps an existing booking "${conflict.title}" (${conflict.startAt.toISOString()}–${conflict.endAt.toISOString()} UTC). Offer a different slot that does not overlap the owner calendar.`,
           };
         }
-        await tx.meeting.create({
+        const meeting = await tx.meeting.create({
           data: {
             title: input.title,
             startAt,
@@ -119,6 +157,13 @@ export async function executeBookMeeting(input: BookMeetingInput): Promise<
             bookedByAgent: true,
           },
         });
+        const leadData = leadDataFromBooking(
+          input,
+          meeting.id,
+          startAt,
+          endAt
+        );
+        await tx.lead.create({ data: leadData });
         return { ok: true as const };
       },
       {
