@@ -30,6 +30,8 @@ import { AudioVisualizer } from "@/components/ui/audio-visualizer";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import type { CustomerUiMessages } from "@/lib/customer-ui-messages";
 import { getCustomerUiMessages } from "@/lib/customer-ui-messages";
+import { localeLabel, normalizeCustomerLocale } from "@/lib/locales";
+import { normalizeOpenAIRealtimeVoice } from "@/lib/openai-realtime-voices";
 
 type Phase = "idle" | "connecting" | "live" | "error";
 
@@ -148,8 +150,22 @@ function CallTimer({ phase }: { phase: Phase }) {
   );
 }
 
-export function RealtimeCallPanel({ locale }: { locale: string }) {
+export function RealtimeCallPanel({
+  locale,
+  voice,
+}: {
+  locale: string;
+  voice: string;
+}) {
   const t = useMemo(() => getCustomerUiMessages(locale), [locale]);
+  const visitorLangCode = useMemo(
+    () => normalizeCustomerLocale(locale),
+    [locale]
+  );
+  const visitorLangName = useMemo(
+    () => localeLabel(visitorLangCode),
+    [visitorLangCode]
+  );
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
   const [micMuted, setMicMuted] = useState(false);
@@ -324,12 +340,11 @@ export function RealtimeCallPanel({ locale }: { locale: string }) {
       JSON.stringify({
         type: "response.create",
         response: {
-          instructions:
-            "Start the call now. Greet the customer first with a brief hello, then invite them to speak.",
+          instructions: `Start the call now. For this turn, speak ONLY in ${visitorLangName} (ISO 639-1: ${visitorLangCode}). Do not use any other language. Give a brief natural hello, then invite the caller to speak.`,
         },
       })
     );
-  }, [playRemoteAudio]);
+  }, [playRemoteAudio, visitorLangCode, visitorLangName]);
 
   const handleServerEvent = useCallback(
     (raw: string) => {
@@ -486,6 +501,7 @@ export function RealtimeCallPanel({ locale }: { locale: string }) {
       const qs = new URLSearchParams({
         mic: MIC_PROFILE,
         vad: VAD_MODE,
+        voice: normalizeOpenAIRealtimeVoice(voice),
       });
       const res = await fetch(`/api/realtime/calls?${qs.toString()}`, {
         method: "POST",
@@ -510,7 +526,7 @@ export function RealtimeCallPanel({ locale }: { locale: string }) {
         )
       );
     }
-  }, [handleServerEvent, playRemoteAudio, remoteMuted, requestInitialGreeting, teardown, t]);
+  }, [handleServerEvent, playRemoteAudio, remoteMuted, requestInitialGreeting, teardown, t, voice]);
 
   useEffect(() => {
     const el = remoteAudioRef.current;

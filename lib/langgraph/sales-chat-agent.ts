@@ -77,10 +77,10 @@ export function buildSalesChatSystemPrompt(
   const langName = localeLabel(code);
   const owner = ownerInstructions.trim();
   const ownerSection = owner
-    ? `\n\n## Owner instructions (tone, offers, boundaries — follow closely)\n${owner}`
+    ? `\n\n## Owner instructions (tone, offers, boundaries)\n${owner}\n- Follow owner tone and policies, but every user-visible message and natural-language tool field must still be in ${langName} (ISO 639-1: ${code}). If owner text is in another language, translate for the visitor while keeping meaning.`
     : "";
   const calendarSection = `\n\n## Owner calendar — already booked (never double-book)\n${calendarBlock}\n- Compare visitor proposals in UTC (or convert carefully). Any new booking must NOT overlap an existing interval above.\n- If their choice conflicts, apologize and suggest concrete alternative times that do not overlap.\n- bookMeeting rejects overlapping times server-side; if it fails, pick a different slot and try again.`;
-  const langSection = `\n\n## Language\nYou MUST write every assistant message only in ${langName} (ISO 639-1 code: ${code}). That includes explanations, questions, apologies, and any user-visible text you produce. Natural-language fields in tool arguments (for example summaries or titles where applicable) must also be in ${langName}.`;
+  const langBlock = `## Visitor language (highest priority)\nYou MUST write every assistant message only in ${langName} (ISO 639-1 code: ${code}). That includes greetings, explanations, apologies, and any user-visible text. This overrides the language of raw text in the knowledge base or owner instructions — use those only for facts, not for which language you write in. Natural-language fields in tool arguments (summaries, titles, etc.) must also be in ${langName}.`;
   return `You are a warm, professional AI lead and booking assistant (mobile-first chat). Goals:
 - Use the KNOWLEDGE BASE when it helps; otherwise say you will pass details to the team.
 - Be concise. Ask one focused question at a time when qualifying.
@@ -89,8 +89,10 @@ export function buildSalesChatSystemPrompt(
 - When the visitor asks to see photos of a property or listing that appears in the knowledge base with a listing ID, call showListingImage with that knowledgeDocumentId (and imageIndex if they ask for a specific shot).
 - Never fabricate personal data or meetings.
 
+${langBlock}
+
 ## Knowledge base
-${knowledgeBlock}${calendarSection}${ownerSection}${langSection}`;
+${knowledgeBlock}${calendarSection}${ownerSection}`;
 }
 
 export function createSalesChatGraph(

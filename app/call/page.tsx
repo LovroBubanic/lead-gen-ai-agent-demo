@@ -1,10 +1,13 @@
 import { RealtimeCallPanel } from "@/components/call/realtime-call-panel";
-import { getAgentLocale } from "@/lib/customer-ai-settings";
+import { getAgentLocale, getAgentRealtimeVoice } from "@/lib/customer-ai-settings";
 
 export const dynamic = "force-dynamic";
 
 export default async function CallPage() {
-  const locale = await getAgentLocale();
-  return <RealtimeCallPanel locale={locale} />;
+  const [locale, voice] = await Promise.all([
+    getAgentLocale(),
+    getAgentRealtimeVoice(),
+  ]);
+  return <RealtimeCallPanel locale={locale} voice={voice} />;
 }
 
