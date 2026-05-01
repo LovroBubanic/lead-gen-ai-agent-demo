@@ -36,6 +36,8 @@ model AgentSettings {
   customerInstructions String   @db.Text @default("")
   /// ISO 639-1 language code for visitor UI, chat, and voice (e.g. en, es, de).
   customerLocale       String   @default("en")
+  /// OpenAI Realtime voice id used for customer voice calls.
+  realtimeVoice        String   @db.Text @default("marin")
   updatedAt            DateTime @updatedAt
 }
 

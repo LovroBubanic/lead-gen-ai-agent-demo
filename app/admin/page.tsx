@@ -5,7 +5,11 @@ import type {
   SerializedMeeting,
 } from "@/components/admin/types";
 import { prisma } from "@/lib/prisma";
-import { getAgentLocale, getCustomerResponseInstructions } from "@/lib/customer-ai-settings";
+import {
+  getAgentLocale,
+  getAgentRealtimeVoice,
+  getCustomerResponseInstructions,
+} from "@/lib/customer-ai-settings";
 import { asImagePathList } from "@/lib/listing-images";
 import { getSupabaseServiceRole } from "@/lib/supabase-server";
 import {
@@ -16,6 +20,7 @@ import {
   logoutDashboard,
   saveCustomerInstructions,
   saveCustomerLocale,
+  saveRealtimeVoice,
   updateLeadForm,
   updateMeetingForm,
   uploadKnowledgePdf,
@@ -76,16 +81,18 @@ export default async function AdminPage() {
   let meetings: SerializedMeeting[] = [];
   let customerInstructions = "";
   let customerLocale = "en";
+  let realtimeVoice = "marin";
   let dataLoadError: string | null = null;
 
   try {
-    const [leadsRaw, docsRaw, meetingsRaw, instructions, locale] =
+    const [leadsRaw, docsRaw, meetingsRaw, instructions, locale, voice] =
       await Promise.all([
         prisma.lead.findMany({ orderBy: { createdAt: "desc" } }),
         prisma.knowledgeDocument.findMany({ orderBy: { createdAt: "desc" } }),
         prisma.meeting.findMany({ orderBy: { startAt: "asc" } }),
         getCustomerResponseInstructions(),
         getAgentLocale(),
+        getAgentRealtimeVoice(),
       ]);
     const serialized = serializeRows(leadsRaw, docsRaw, meetingsRaw);
     leads = serialized.leads;
@@ -93,6 +100,7 @@ export default async function AdminPage() {
     meetings = serialized.meetings;
     customerInstructions = instructions;
     customerLocale = locale;
+    realtimeVoice = voice;
   } catch (err) {
     console.error("[admin] failed to load dashboard data", err);
     if (process.env.NODE_ENV === "development") {
@@ -102,9 +110,10 @@ export default async function AdminPage() {
       dataLoadError =
         "Database query failed. Check DATABASE_URL / DIRECT_URL and that Prisma schema is applied.";
     }
-    [customerInstructions, customerLocale] = await Promise.all([
+    [customerInstructions, customerLocale, realtimeVoice] = await Promise.all([
       getCustomerResponseInstructions(),
       getAgentLocale(),
+      getAgentRealtimeVoice(),
     ]);
   }
 
@@ -115,6 +124,7 @@ export default async function AdminPage() {
       docs={docs}
       customerInstructions={customerInstructions}
       customerLocale={customerLocale}
+      realtimeVoice={realtimeVoice}
       supabaseConfigured={supabaseConfigured}
       dataLoadError={dataLoadError}
       actions={{
@@ -126,6 +136,7 @@ export default async function AdminPage() {
         uploadKnowledgePdf,
         saveCustomerInstructions,
         saveCustomerLocale,
+        saveRealtimeVoice,
         updateLeadForm,
         updateMeetingForm,
       }}

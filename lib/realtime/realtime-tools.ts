@@ -27,7 +27,7 @@ export const REALTIME_SESSION_TOOLS = [
     type: "function" as const,
     name: "bookMeeting",
     description:
-      "Save a calendar booking after the visitor agrees to a concrete date, time, and how to connect. Use ISO-8601 start/end with timezone offset (+02:00) or Z; naive wall times use server BOOKING_INPUT_TIMEZONE (default UTC). Put Meet/Zoom link or phone in locationDetail.",
+      "Save a calendar booking after the visitor agrees to a concrete date, time, and how to connect. Use ISO-8601 start/end with timezone offset (+02:00) or Z; naive wall times use server BOOKING_INPUT_TIMEZONE (default UTC). Put Meet/Zoom link or phone in locationDetail. Do not use a window that overlaps any interval in the owner calendar in your instructions; the server rejects overlaps.",
     parameters: {
       type: "object",
       properties: {

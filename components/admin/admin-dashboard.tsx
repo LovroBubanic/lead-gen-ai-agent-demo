@@ -46,6 +46,7 @@ import type {
 import { cn } from "@/lib/utils";
 import { AuroraBackground } from "@/components/ui/aurora-background";
 import { CUSTOMER_LOCALE_OPTIONS } from "@/lib/locales";
+import { OPENAI_REALTIME_VOICE_OPTIONS } from "@/lib/openai-realtime-voices";
 import { CountUp } from "@/components/ui/count-up";
 import { FadeIn } from "@/components/ui/fade-in";
 import { GradientText } from "@/components/ui/gradient-text";
@@ -62,6 +63,7 @@ type DashboardActions = {
   uploadKnowledgePdf: (formData: FormData) => void | Promise<void>;
   saveCustomerInstructions: (formData: FormData) => void | Promise<void>;
   saveCustomerLocale: (formData: FormData) => void | Promise<void>;
+  saveRealtimeVoice: (formData: FormData) => void | Promise<void>;
   updateLeadForm: (formData: FormData) => void | Promise<void>;
   updateMeetingForm: (formData: FormData) => void | Promise<void>;
 };
@@ -72,6 +74,7 @@ type AdminDashboardProps = {
   docs: SerializedKnowledge[];
   customerInstructions: string;
   customerLocale: string;
+  realtimeVoice: string;
   actions: DashboardActions;
   supabaseConfigured: boolean;
   /** Set when Prisma could not load lists (missing env, DB down, schema drift). */
@@ -142,6 +145,7 @@ export function AdminDashboard({
   docs,
   customerInstructions,
   customerLocale,
+  realtimeVoice,
   actions,
   supabaseConfigured,
   dataLoadError = null,
@@ -1381,6 +1385,48 @@ export function AdminDashboard({
                         className="inline-flex items-center gap-2 self-start rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-5 py-2.5 text-sm font-semibold text-[var(--foreground)] shadow-sm transition hover:bg-[var(--surface)]"
                       >
                         Save language
+                      </motion.button>
+                    </form>
+                  </SpotlightCard>
+                </FadeIn>
+
+                <FadeIn>
+                  <SpotlightCard>
+                    <form
+                      action={actions.saveRealtimeVoice}
+                      className="flex flex-col gap-3 p-5"
+                    >
+                      <label className="flex flex-col gap-2">
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
+                          Voice for calls
+                        </span>
+                        <select
+                          name="realtimeVoice"
+                          defaultValue={realtimeVoice}
+                          className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5 text-sm text-[var(--foreground)] outline-none ring-[var(--primary)]/40 transition focus:ring-2"
+                        >
+                          {OPENAI_REALTIME_VOICE_OPTIONS.map((voice) => (
+                            <option key={voice.id} value={voice.id}>
+                              {voice.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <p className="text-[11px] text-[var(--muted)]">
+                        Used by OpenAI Realtime voice calls through your{" "}
+                        <code className="rounded bg-[var(--surface-muted)] px-1">
+                          OPENAI_API_KEY
+                        </code>
+                        .
+                      </p>
+                      <motion.button
+                        type="submit"
+                        whileHover={{ y: -1 }}
+                        whileTap={{ scale: 0.98 }}
+                        className="inline-flex items-center gap-2 self-start rounded-full border border-[var(--border)] bg-[var(--surface-muted)] px-5 py-2.5 text-sm font-semibold text-[var(--foreground)] shadow-sm transition hover:bg-[var(--surface)]"
+                      >
+                        <Phone className="h-4 w-4" aria-hidden />
+                        Save voice
                       </motion.button>
                     </form>
                   </SpotlightCard>

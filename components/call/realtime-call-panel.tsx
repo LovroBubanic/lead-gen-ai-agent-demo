@@ -164,6 +164,8 @@ export function RealtimeCallPanel({ locale }: { locale: string }) {
   const disposeHpfRef = useRef<(() => void) | null>(null);
   const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
   const ctxRef = useRef<AudioContext | null>(null);
+  const initialGreetingRequestedRef = useRef(false);
+  const waitingForInitialGreetingRef = useRef(false);
 
   const processToolCalls = useCallback(
     async (calls: FunctionCallItem[]) => {
@@ -286,6 +288,8 @@ export function RealtimeCallPanel({ locale }: { locale: string }) {
     setMicStream(null);
     setMicMuted(false);
     setPhase("idle");
+    initialGreetingRequestedRef.current = false;
+    waitingForInitialGreetingRef.current = false;
   }, []);
 
   useEffect(() => () => teardown(), [teardown]);
@@ -294,8 +298,38 @@ export function RealtimeCallPanel({ locale }: { locale: string }) {
   useEffect(() => {
     const tr = senderTrackRef.current;
     if (!tr) return;
-    tr.enabled = !micMuted;
+    tr.enabled = !micMuted && !waitingForInitialGreetingRef.current;
   }, [micMuted]);
+
+  const playRemoteAudio = useCallback(() => {
+    const el = remoteAudioRef.current;
+    if (!el || remoteMuted) return;
+    el.muted = false;
+    el.volume = 1;
+    void el.play().catch(() => {});
+  }, [remoteMuted]);
+
+  const requestInitialGreeting = useCallback(() => {
+    const dc = dcRef.current;
+    if (
+      !dc ||
+      dc.readyState !== "open" ||
+      initialGreetingRequestedRef.current
+    ) {
+      return;
+    }
+    initialGreetingRequestedRef.current = true;
+    playRemoteAudio();
+    dc.send(
+      JSON.stringify({
+        type: "response.create",
+        response: {
+          instructions:
+            "Start the call now. Greet the customer first with a brief hello, then invite them to speak.",
+        },
+      })
+    );
+  }, [playRemoteAudio]);
 
   const handleServerEvent = useCallback(
     (raw: string) => {
@@ -329,19 +363,30 @@ export function RealtimeCallPanel({ locale }: { locale: string }) {
         }
       }
 
+      if (
+        type === "response.created" ||
+        type === "response.output_item.added" ||
+        type === "response.audio.delta" ||
+        type === "output_audio_buffer.started"
+      ) {
+        playRemoteAudio();
+      }
+
       if (type === "response.done" || type === "response.completed") {
+        if (waitingForInitialGreetingRef.current) {
+          waitingForInitialGreetingRef.current = false;
+          const tr = senderTrackRef.current;
+          if (tr) tr.enabled = !micMuted;
+        }
         const calls = extractFunctionCalls(msg);
         if (calls.length > 0) {
           void processToolCalls(calls);
           return;
         }
-        const el = remoteAudioRef.current;
-        if (el && !remoteMuted) {
-          void el.play().catch(() => {});
-        }
+        playRemoteAudio();
       }
     },
-    [processToolCalls, remoteMuted, t]
+    [micMuted, playRemoteAudio, processToolCalls, remoteMuted, t]
   );
 
   const connectCall = useCallback(async () => {
@@ -381,7 +426,9 @@ export function RealtimeCallPanel({ locale }: { locale: string }) {
       const outTrack = sendStream.getAudioTracks()[0];
       if (!outTrack) throw new Error("No microphone audio track.");
       senderTrackRef.current = outTrack;
-      outTrack.enabled = !micMuted;
+      waitingForInitialGreetingRef.current = true;
+      initialGreetingRequestedRef.current = false;
+      outTrack.enabled = false;
 
       const pc = new RTCPeerConnection({
         iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
@@ -397,11 +444,12 @@ export function RealtimeCallPanel({ locale }: { locale: string }) {
         el.muted = remoteMuted;
         el.volume = remoteMuted ? 0 : 1;
         el.setAttribute("playsinline", "");
-        void el.play().catch(() => {});
+        playRemoteAudio();
       };
 
       const dc = pc.createDataChannel("oai-events", { ordered: true });
       dcRef.current = dc;
+      dc.onopen = requestInitialGreeting;
       dc.onmessage = (ev) => handleServerEvent(String(ev.data));
       dc.onerror = () => setError(t.errorDataChannel);
 
@@ -450,6 +498,7 @@ export function RealtimeCallPanel({ locale }: { locale: string }) {
       }
 
       await pc.setRemoteDescription({ type: "answer", sdp: answerSdp });
+      requestInitialGreeting();
       setPhase("live");
     } catch (e) {
       teardown();
@@ -461,7 +510,7 @@ export function RealtimeCallPanel({ locale }: { locale: string }) {
         )
       );
     }
-  }, [handleServerEvent, micMuted, remoteMuted, teardown, t]);
+  }, [handleServerEvent, playRemoteAudio, remoteMuted, requestInitialGreeting, teardown, t]);
 
   useEffect(() => {
     const el = remoteAudioRef.current;

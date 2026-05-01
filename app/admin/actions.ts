@@ -14,6 +14,7 @@ import { AGENT_SETTINGS_ID } from "@/lib/customer-ai-settings";
 import { asImagePathList, isHttpImageRef } from "@/lib/listing-images";
 import { getSupabaseServiceRole } from "@/lib/supabase-server";
 import { normalizeCustomerLocale } from "@/lib/locales";
+import { normalizeOpenAIRealtimeVoice } from "@/lib/openai-realtime-voices";
 
 const PDF_MAX_BYTES = 8 * 1024 * 1024;
 const KNOWLEDGE_BUCKET = "knowledge-pdfs";
@@ -293,6 +294,12 @@ export async function updateMeetingForm(formData: FormData) {
 
 const MAX_INSTRUCTION_CHARS = 12_000;
 
+async function ensureAgentSettingsVoiceColumn() {
+  await prisma.$executeRaw(
+    Prisma.sql`ALTER TABLE "AgentSettings" ADD COLUMN IF NOT EXISTS "realtimeVoice" TEXT NOT NULL DEFAULT 'marin'`
+  );
+}
+
 export async function saveCustomerInstructions(formData: FormData) {
   await assertDashboard();
   let text = String(formData.get("customerInstructions") ?? "");
@@ -326,5 +333,22 @@ export async function saveCustomerLocale(formData: FormData) {
   );
   revalidatePath("/admin");
   revalidatePath("/chat");
+  revalidatePath("/call");
+}
+
+export async function saveRealtimeVoice(formData: FormData) {
+  await assertDashboard();
+  const voice = normalizeOpenAIRealtimeVoice(String(formData.get("realtimeVoice") ?? ""));
+  await ensureAgentSettingsVoiceColumn();
+  await prisma.$executeRaw(
+    Prisma.sql`
+      INSERT INTO "AgentSettings" ("id", "customerInstructions", "customerLocale", "realtimeVoice", "updatedAt")
+      VALUES (${AGENT_SETTINGS_ID}, '', 'en', ${voice}, NOW())
+      ON CONFLICT ("id") DO UPDATE SET
+        "realtimeVoice" = EXCLUDED."realtimeVoice",
+        "updatedAt" = NOW()
+    `
+  );
+  revalidatePath("/admin");
   revalidatePath("/call");
 }

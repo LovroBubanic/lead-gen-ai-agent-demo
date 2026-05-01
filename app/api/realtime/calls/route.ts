@@ -1,5 +1,6 @@
 import { buildRealtimeCallSessionJson } from "@/lib/realtime/realtime-session";
 import { isContentType, rateLimit } from "@/lib/rate-limit";
+import { normalizeOpenAIRealtimeVoice } from "@/lib/openai-realtime-voices";
 
 export const maxDuration = 120;
 export const runtime = "nodejs";
@@ -13,12 +14,10 @@ function parseVad(v: string | null): "semantic" | "server" {
   return v === "server" ? "server" : "semantic";
 }
 
-function parseVoice(v: string | null): string {
+function parseVoice(v: string | null): string | undefined {
   const fromQuery = v?.trim();
-  if (fromQuery && /^[a-z0-9_-]{1,32}$/i.test(fromQuery)) return fromQuery;
-  const fromEnv = process.env.OPENAI_REALTIME_VOICE?.trim();
-  if (fromEnv && /^[a-z0-9_-]{1,32}$/i.test(fromEnv)) return fromEnv;
-  return "marin";
+  if (fromQuery) return normalizeOpenAIRealtimeVoice(fromQuery);
+  return undefined;
 }
 
 export async function POST(req: Request) {

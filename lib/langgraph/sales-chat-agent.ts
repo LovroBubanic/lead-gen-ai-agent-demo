@@ -27,7 +27,7 @@ const bookMeetingLc = tool(
   {
     name: "bookMeeting",
     description:
-      "Save a calendar booking after the visitor agrees to a concrete date, time, and connection method (Meet, Zoom, or phone). ISO start/end must include timezone offset (+02:00) or Z; naive times use server BOOKING_INPUT_TIMEZONE (default UTC).",
+      "Save a calendar booking after the visitor agrees to a concrete date, time, and connection method (Meet, Zoom, or phone). ISO start/end must include timezone offset (+02:00) or Z; naive times use server BOOKING_INPUT_TIMEZONE (default UTC). Never propose or save a window that overlaps any interval in the owner calendar section of the system prompt; the tool rejects overlaps.",
     schema: bookMeetingInputSchema,
   }
 );
@@ -70,7 +70,8 @@ export const salesChatAiSdkTools = {
 export function buildSalesChatSystemPrompt(
   knowledgeBlock: string,
   ownerInstructions: string,
-  locale: string
+  locale: string,
+  calendarBlock: string
 ): string {
   const code = normalizeCustomerLocale(locale);
   const langName = localeLabel(code);
@@ -78,23 +79,25 @@ export function buildSalesChatSystemPrompt(
   const ownerSection = owner
     ? `\n\n## Owner instructions (tone, offers, boundaries — follow closely)\n${owner}`
     : "";
+  const calendarSection = `\n\n## Owner calendar — already booked (never double-book)\n${calendarBlock}\n- Compare visitor proposals in UTC (or convert carefully). Any new booking must NOT overlap an existing interval above.\n- If their choice conflicts, apologize and suggest concrete alternative times that do not overlap.\n- bookMeeting rejects overlapping times server-side; if it fails, pick a different slot and try again.`;
   const langSection = `\n\n## Language\nYou MUST write every assistant message only in ${langName} (ISO 639-1 code: ${code}). That includes explanations, questions, apologies, and any user-visible text you produce. Natural-language fields in tool arguments (for example summaries or titles where applicable) must also be in ${langName}.`;
   return `You are a warm, professional AI lead and booking assistant (mobile-first chat). Goals:
 - Use the KNOWLEDGE BASE when it helps; otherwise say you will pass details to the team.
 - Be concise. Ask one focused question at a time when qualifying.
 - When (and only when) the visitor gives a real name and email and you know their intent, call captureLead once.
-- When the visitor confirms a specific meeting window and how to connect, call bookMeeting with ISO-8601 start/end datetimes including an explicit timezone offset (e.g. 2026-05-05T15:00:00+02:00) or Z for UTC; use the real agreed calendar date and time, meetingType, and locationDetail (link or phone).
+- When the visitor confirms a specific meeting window and how to connect, call bookMeeting with ISO-8601 start/end datetimes including an explicit timezone offset (e.g. 2026-05-05T15:00:00+02:00) or Z for UTC; use the real agreed calendar date and time, meetingType, and locationDetail (link or phone). Always respect the owner calendar: never book over an existing slot.
 - When the visitor asks to see photos of a property or listing that appears in the knowledge base with a listing ID, call showListingImage with that knowledgeDocumentId (and imageIndex if they ask for a specific shot).
 - Never fabricate personal data or meetings.
 
 ## Knowledge base
-${knowledgeBlock}${ownerSection}${langSection}`;
+${knowledgeBlock}${calendarSection}${ownerSection}${langSection}`;
 }
 
 export function createSalesChatGraph(
   knowledgeBlock: string,
   ownerInstructions: string = "",
-  locale: string = "en"
+  locale: string = "en",
+  calendarBlock: string = ""
 ) {
   const modelId = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
   const llm = new ChatOpenAI({
@@ -104,6 +107,11 @@ export function createSalesChatGraph(
   return createReactAgent({
     llm,
     tools: salesChatLangChainTools,
-    prompt: buildSalesChatSystemPrompt(knowledgeBlock, ownerInstructions, locale),
+    prompt: buildSalesChatSystemPrompt(
+      knowledgeBlock,
+      ownerInstructions,
+      locale,
+      calendarBlock
+    ),
   });
 }

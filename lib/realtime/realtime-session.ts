@@ -1,6 +1,8 @@
 import { buildKnowledgeContext } from "@/lib/knowledge";
+import { buildMeetingCalendarContextForAgent } from "@/lib/meeting-calendar-context";
 import {
   getAgentLocale,
+  getAgentRealtimeVoice,
   getCustomerResponseInstructions,
 } from "@/lib/customer-ai-settings";
 import { localeLabel, normalizeCustomerLocale } from "@/lib/locales";
@@ -9,7 +11,7 @@ import { REALTIME_SESSION_TOOLS } from "@/lib/realtime/realtime-tools";
 export type RealtimeCallSessionOptions = {
   mic: "near_field" | "far_field";
   vad: "semantic" | "server";
-  voice: string;
+  voice?: string;
 };
 
 function turnDetection(vad: "semantic" | "server") {
@@ -34,7 +36,8 @@ function turnDetection(vad: "semantic" | "server") {
 function buildVoiceInstructions(
   kb: string,
   ownerInstructions: string,
-  locale: string
+  locale: string,
+  calendarBlock: string
 ): string {
   const code = normalizeCustomerLocale(locale);
   const langName = localeLabel(code);
@@ -42,17 +45,19 @@ function buildVoiceInstructions(
   const ownerSection = owner
     ? `\n\n## Owner instructions (tone, offers, boundaries — follow closely)\n${owner}`
     : "";
+  const calendarSection = `\n\n## Owner calendar — already booked (never double-book)\n${calendarBlock}\n- Compare proposed times in UTC or convert carefully. Never book a slot that overlaps an existing interval above.\n- If the visitor's choice conflicts, apologize and offer alternatives that do not overlap.\n- bookMeeting rejects overlaps server-side; if it fails, choose a different time and call bookMeeting again.`;
   const langSection = `\n\n## Language\nSpeak and respond only in ${langName} (ISO 639-1: ${code}). All spoken output and reasoning you express to the user must be in this language.`;
   return `You are a warm, professional AI lead and booking assistant on a live voice phone call (same role as the text chat).
 - Use the KNOWLEDGE BASE when it helps; otherwise say you will pass details to the team.
+- At the start of every new call, greet the customer first with a short hello before asking how you can help. If the owner instructions specify exact greeting wording, use it.
 - Be concise and natural for speech. Ask one focused question at a time when qualifying.
 - When the visitor clearly shares a real name, email, and intent, you MUST call the captureLead tool once to save them for the owner dashboard.
-- When the visitor confirms a specific meeting time window AND how to connect (Google Meet, Zoom link, or phone number), you MUST call bookMeeting with ISO-8601 start/end datetimes that include a timezone offset from the visitor's zone (e.g. ...+02:00) or Z for UTC — never invent past years — and put the link or phone in locationDetail.
+- When the visitor confirms a specific meeting time window AND how to connect (Google Meet, Zoom link, or phone number), you MUST call bookMeeting with ISO-8601 start/end datetimes that include a timezone offset from the visitor's zone (e.g. ...+02:00) or Z for UTC — never invent past years — and put the link or phone in locationDetail. Always respect the owner calendar: never book over an existing slot.
 - The owner sees leads and meetings only after these tools succeed — do not only say you booked; call the tools.
 - Never invent personal data, meetings, or policies not grounded in the knowledge base.
 
 ## Knowledge base
-${kb}${ownerSection}${langSection}`;
+${kb}${calendarSection}${ownerSection}${langSection}`;
 }
 
 /**
@@ -64,13 +69,22 @@ export async function buildRealtimeCallSessionJson(
 ): Promise<string> {
   const model =
     process.env.OPENAI_REALTIME_MODEL?.trim() || "gpt-realtime";
-  const [kb, ownerInstructions, sessionLocale] = await Promise.all([
-    buildKnowledgeContext(),
-    getCustomerResponseInstructions(),
-    getAgentLocale(),
-  ]);
+  const [kb, ownerInstructions, sessionLocale, savedVoice, calendarBlock] =
+    await Promise.all([
+      buildKnowledgeContext(),
+      getCustomerResponseInstructions(),
+      getAgentLocale(),
+      getAgentRealtimeVoice(),
+      buildMeetingCalendarContextForAgent(),
+    ]);
   const locale = normalizeCustomerLocale(sessionLocale);
-  const instructions = buildVoiceInstructions(kb, ownerInstructions, locale);
+  const instructions = buildVoiceInstructions(
+    kb,
+    ownerInstructions,
+    locale,
+    calendarBlock
+  );
+  const voice = opts.voice ?? savedVoice;
 
   const input: Record<string, unknown> = {
     noise_reduction: { type: opts.mic },
@@ -96,7 +110,7 @@ export async function buildRealtimeCallSessionJson(
     audio: {
       input,
       output: {
-        voice: opts.voice,
+        voice,
       },
     },
   };

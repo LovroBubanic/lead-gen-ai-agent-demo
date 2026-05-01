@@ -1,4 +1,4 @@
-import type { Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { parseBookMeetingIsoToUtc } from "@/lib/meeting-datetime";
@@ -87,20 +87,53 @@ export async function executeBookMeeting(input: BookMeetingInput): Promise<
   if (endAt <= startAt) {
     return { ok: false, error: "End must be after start" };
   }
-  await prisma.meeting.create({
-    data: {
-      title: input.title,
-      startAt,
-      endAt,
-      attendeeName: input.attendeeName,
-      attendeeEmail: input.attendeeEmail,
-      notes: input.notes,
-      meetingType: input.meetingType ?? null,
-      locationDetail: input.locationDetail ?? null,
-      bookedByAgent: true,
-    },
-  });
-  return { ok: true };
+  try {
+    return await prisma.$transaction(
+      async (tx) => {
+        const conflict = await tx.meeting.findFirst({
+          where: {
+            AND: [{ startAt: { lt: endAt } }, { endAt: { gt: startAt } }],
+          },
+          select: {
+            title: true,
+            startAt: true,
+            endAt: true,
+          },
+        });
+        if (conflict) {
+          return {
+            ok: false as const,
+            error: `That time overlaps an existing booking "${conflict.title}" (${conflict.startAt.toISOString()}–${conflict.endAt.toISOString()} UTC). Offer a different slot that does not overlap the owner calendar.`,
+          };
+        }
+        await tx.meeting.create({
+          data: {
+            title: input.title,
+            startAt,
+            endAt,
+            attendeeName: input.attendeeName,
+            attendeeEmail: input.attendeeEmail,
+            notes: input.notes,
+            meetingType: input.meetingType ?? null,
+            locationDetail: input.locationDetail ?? null,
+            bookedByAgent: true,
+          },
+        });
+        return { ok: true as const };
+      },
+      {
+        isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        maxWait: 5000,
+        timeout: 10_000,
+      }
+    );
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Booking failed";
+    return {
+      ok: false,
+      error: `Could not confirm the booking (${msg}). Try a slightly different time.`,
+    };
+  }
 }
 
 export async function executeShowListingImage(

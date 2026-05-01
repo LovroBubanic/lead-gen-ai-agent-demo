@@ -1,6 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { normalizeCustomerLocale } from "@/lib/locales";
+import { normalizeOpenAIRealtimeVoice } from "@/lib/openai-realtime-voices";
 
 export const AGENT_SETTINGS_ID = "global" as const;
 
@@ -34,5 +35,22 @@ export async function getAgentLocale(): Promise<string> {
     return normalizeCustomerLocale(typeof v === "string" ? v : null);
   } catch {
     return normalizeCustomerLocale(null);
+  }
+}
+
+/**
+ * Load the OpenAI Realtime voice selected by the owner. Falls back to env/default
+ * while older databases are missing the column.
+ */
+export async function getAgentRealtimeVoice(): Promise<string> {
+  try {
+    const rows = await prisma.$queryRaw<Array<{ realtimeVoice: string | null }>>(
+      Prisma.sql`SELECT "realtimeVoice" FROM "AgentSettings" WHERE "id" = ${AGENT_SETTINGS_ID} LIMIT 1`
+    );
+    return normalizeOpenAIRealtimeVoice(
+      rows[0]?.realtimeVoice ?? process.env.OPENAI_REALTIME_VOICE
+    );
+  } catch {
+    return normalizeOpenAIRealtimeVoice(process.env.OPENAI_REALTIME_VOICE);
   }
 }

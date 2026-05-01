@@ -6,6 +6,7 @@ import {
   type UIMessage,
 } from "ai";
 import { buildKnowledgeContext } from "@/lib/knowledge";
+import { buildMeetingCalendarContextForAgent } from "@/lib/meeting-calendar-context";
 import {
   getAgentLocale,
   getCustomerResponseInstructions,
@@ -58,16 +59,17 @@ export async function POST(req: Request) {
         { status: 500, headers: { "Content-Type": "application/json" } }
       );
     }
-    const [kb, ownerInstructions, locale] = await Promise.all([
+    const [kb, ownerInstructions, locale, calendarBlock] = await Promise.all([
       buildKnowledgeContext(),
       getCustomerResponseInstructions(),
       getAgentLocale(),
+      buildMeetingCalendarContextForAgent(),
     ]);
     const modelMessages = await convertToModelMessages(messages, {
       tools: salesChatAiSdkTools,
     });
     const lcMessages = modelMessagesToLangChainMessages(modelMessages);
-    const agent = createSalesChatGraph(kb, ownerInstructions, locale);
+    const agent = createSalesChatGraph(kb, ownerInstructions, locale, calendarBlock);
 
     const stream = createUIMessageStream({
       originalMessages: messages,
