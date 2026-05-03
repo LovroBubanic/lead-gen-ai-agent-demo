@@ -206,7 +206,7 @@ export function RealtimeCallPanel({
           }
           if (!res.ok) {
             const errMsg = `Tool API ${res.status}: ${raw.slice(0, 200)}`;
-            setError(errMsg);
+            setError(t.voiceToolFailed);
             dc.send(
               JSON.stringify({
                 type: "conversation.item.create",
@@ -233,9 +233,7 @@ export function RealtimeCallPanel({
             /* output may be non-JSON */
           }
           if (parsed.ok === false) {
-            setError(
-              `Dashboard save failed (${call.name}): ${JSON.stringify(parsed.error)}`
-            );
+            setError(t.voiceDashboardSaveFailed);
           }
           dc.send(
             JSON.stringify({
@@ -249,7 +247,7 @@ export function RealtimeCallPanel({
           );
         } catch (e) {
           const errMsg = e instanceof Error ? e.message : "Tool failed";
-          setError(errMsg);
+          setError(t.voiceToolFailed);
           dc.send(
             JSON.stringify({
               type: "conversation.item.create",
@@ -267,7 +265,7 @@ export function RealtimeCallPanel({
       }
       dc.send(JSON.stringify({ type: "response.create" }));
     },
-    [setError]
+    [setError, t]
   );
 
   const teardown = useCallback(() => {

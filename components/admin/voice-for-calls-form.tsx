@@ -78,8 +78,15 @@ export function VoiceForCallsForm({
     }
   }, [customerLocale, selectedVoice]);
 
+  const voiceDirty = selectedVoice !== defaultVoice;
+
   return (
     <form action={saveAction} className="flex flex-col gap-3 p-5">
+      {voiceDirty ? (
+        <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-900 dark:text-amber-100">
+          Unsaved changes — click Save voice.
+        </p>
+      ) : null}
       <label className="flex flex-col gap-2">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
           Voice for calls

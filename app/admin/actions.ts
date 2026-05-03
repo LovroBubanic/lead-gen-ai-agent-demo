@@ -293,10 +293,22 @@ export async function updateMeetingForm(formData: FormData) {
 }
 
 const MAX_INSTRUCTION_CHARS = 12_000;
+const MAX_KNOWLEDGE_CONTENT_CHARS = 500_000;
 
 async function ensureAgentSettingsVoiceColumn() {
   await prisma.$executeRaw(
     Prisma.sql`ALTER TABLE "AgentSettings" ADD COLUMN IF NOT EXISTS "realtimeVoice" TEXT NOT NULL DEFAULT 'marin'`
+  );
+}
+
+/** Ensures the singleton row exists without overwriting existing columns. */
+async function ensureAgentSettingsRow() {
+  await prisma.$executeRaw(
+    Prisma.sql`
+      INSERT INTO "AgentSettings" ("id", "customerInstructions", "customerLocale", "updatedAt")
+      VALUES (${AGENT_SETTINGS_ID}, '', 'en', NOW())
+      ON CONFLICT ("id") DO NOTHING
+    `
   );
 }
 
@@ -306,13 +318,12 @@ export async function saveCustomerInstructions(formData: FormData) {
   if (text.length > MAX_INSTRUCTION_CHARS) {
     text = text.slice(0, MAX_INSTRUCTION_CHARS);
   }
+  await ensureAgentSettingsRow();
   await prisma.$executeRaw(
     Prisma.sql`
-      INSERT INTO "AgentSettings" ("id", "customerInstructions", "updatedAt")
-      VALUES (${AGENT_SETTINGS_ID}, ${text}, NOW())
-      ON CONFLICT ("id") DO UPDATE SET
-        "customerInstructions" = EXCLUDED."customerInstructions",
-        "updatedAt" = NOW()
+      UPDATE "AgentSettings"
+      SET "customerInstructions" = ${text}, "updatedAt" = NOW()
+      WHERE "id" = ${AGENT_SETTINGS_ID}
     `
   );
   revalidatePath("/admin");
@@ -322,13 +333,12 @@ export async function saveCustomerLocale(formData: FormData) {
   await assertDashboard();
   const raw = String(formData.get("customerLocale") ?? "");
   const locale = normalizeCustomerLocale(raw);
+  await ensureAgentSettingsRow();
   await prisma.$executeRaw(
     Prisma.sql`
-      INSERT INTO "AgentSettings" ("id", "customerInstructions", "customerLocale", "updatedAt")
-      VALUES (${AGENT_SETTINGS_ID}, '', ${locale}, NOW())
-      ON CONFLICT ("id") DO UPDATE SET
-        "customerLocale" = EXCLUDED."customerLocale",
-        "updatedAt" = NOW()
+      UPDATE "AgentSettings"
+      SET "customerLocale" = ${locale}, "updatedAt" = NOW()
+      WHERE "id" = ${AGENT_SETTINGS_ID}
     `
   );
   revalidatePath("/admin");
@@ -340,15 +350,74 @@ export async function saveRealtimeVoice(formData: FormData) {
   await assertDashboard();
   const voice = normalizeOpenAIRealtimeVoice(String(formData.get("realtimeVoice") ?? ""));
   await ensureAgentSettingsVoiceColumn();
+  await ensureAgentSettingsRow();
   await prisma.$executeRaw(
     Prisma.sql`
-      INSERT INTO "AgentSettings" ("id", "customerInstructions", "customerLocale", "realtimeVoice", "updatedAt")
-      VALUES (${AGENT_SETTINGS_ID}, '', 'en', ${voice}, NOW())
-      ON CONFLICT ("id") DO UPDATE SET
-        "realtimeVoice" = EXCLUDED."realtimeVoice",
-        "updatedAt" = NOW()
+      UPDATE "AgentSettings"
+      SET "realtimeVoice" = ${voice}, "updatedAt" = NOW()
+      WHERE "id" = ${AGENT_SETTINGS_ID}
     `
   );
   revalidatePath("/admin");
   revalidatePath("/call");
+}
+
+export async function updateKnowledgeDocument(formData: FormData) {
+  await assertDashboard();
+  const id = String(formData.get("id") ?? "").trim();
+  let title = String(formData.get("title") ?? "").trim();
+  let content = String(formData.get("content") ?? "").trim();
+  if (!id || !title || !content) return;
+  if (content.length > MAX_KNOWLEDGE_CONTENT_CHARS) {
+    content = content.slice(0, MAX_KNOWLEDGE_CONTENT_CHARS);
+  }
+
+  const existing = await prisma.knowledgeDocument.findUnique({ where: { id } });
+  if (!existing) return;
+
+  const supabase = getSupabaseServiceRole();
+  const prevPaths = asImagePathList(existing.imagePaths);
+  const mergedPaths: string[] = [...prevPaths];
+
+  const files = formData
+    .getAll("images")
+    .filter((x): x is File => x instanceof File && x.size > 0);
+
+  if (supabase && files.length > 0) {
+    const room = Math.max(0, MAX_IMAGES_PER_DOC - mergedPaths.length);
+    for (let j = 0; j < Math.min(files.length, room); j++) {
+      const file = files[j];
+      if (file.size > MAX_IMAGE_BYTES) continue;
+      const mime = file.type;
+      if (!ALLOWED_IMAGE_TYPES.has(mime)) continue;
+      const ext =
+        mime === "image/png"
+          ? "png"
+          : mime === "image/webp"
+            ? "webp"
+            : mime === "image/gif"
+              ? "gif"
+              : "jpg";
+      const path = `listing-images/${id}/${mergedPaths.length}.${ext}`;
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const { error } = await supabase.storage
+        .from(KNOWLEDGE_BUCKET)
+        .upload(path, buffer, {
+          contentType: mime,
+          upsert: true,
+        });
+      if (!error) mergedPaths.push(path);
+    }
+  }
+
+  const pathsChanged = mergedPaths.length !== prevPaths.length;
+  await prisma.knowledgeDocument.update({
+    where: { id },
+    data: {
+      title,
+      content,
+      ...(pathsChanged ? { imagePaths: mergedPaths } : {}),
+    },
+  });
+  revalidatePath("/admin");
 }

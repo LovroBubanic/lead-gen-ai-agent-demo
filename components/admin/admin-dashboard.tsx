@@ -12,7 +12,6 @@ import {
   Filter,
   LayoutDashboard,
   LogOut,
-  Image as ImageIcon,
   MessageSquare,
   Pencil,
   Phone,
@@ -26,7 +25,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
 import {
   defaultOwnerCalendarMonth,
   startOfLocalDay,
@@ -37,6 +36,7 @@ import {
   formatRelativeOrAbsolute,
 } from "@/lib/dashboard-datetime";
 import { CalendarView } from "./calendar-view";
+import { KnowledgeDocCard } from "./knowledge-doc-card";
 import { MeetingDrawer } from "./meeting-drawer";
 import type {
   SerializedKnowledge,
@@ -57,6 +57,7 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 type DashboardActions = {
   addKnowledgeDocument: (formData: FormData) => void | Promise<void>;
   deleteKnowledgeForm: (formData: FormData) => void | Promise<void>;
+  updateKnowledgeDocument: (formData: FormData) => void | Promise<void>;
   deleteLeadForm: (formData: FormData) => void | Promise<void>;
   deleteMeetingForm: (formData: FormData) => void | Promise<void>;
   logoutDashboard: () => void | Promise<void>;
@@ -165,6 +166,16 @@ export function AdminDashboard({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [leadEditId, setLeadEditId] = useState<string | null>(null);
+  const [localeDraft, setLocaleDraft] = useState(customerLocale);
+  const [instructionDraft, setInstructionDraft] = useState(customerInstructions);
+
+  useEffect(() => {
+    setLocaleDraft(customerLocale);
+  }, [customerLocale]);
+
+  useEffect(() => {
+    setInstructionDraft(customerInstructions);
+  }, [customerInstructions]);
 
   const filteredLeads = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -281,6 +292,34 @@ export function AdminDashboard({
   }, []);
 
   const pendingNavId = `admin-tab-${tab}`;
+
+  const assistantLocaleDirty = localeDraft !== customerLocale;
+  const assistantInstructionsDirty =
+    instructionDraft !== customerInstructions;
+
+  const saveLocaleAction = useCallback(
+    async (formData: FormData) => {
+      await actions.saveCustomerLocale(formData);
+      startTransition(() => router.refresh());
+    },
+    [actions, router, startTransition]
+  );
+
+  const saveInstructionsAction = useCallback(
+    async (formData: FormData) => {
+      await actions.saveCustomerInstructions(formData);
+      startTransition(() => router.refresh());
+    },
+    [actions, router, startTransition]
+  );
+
+  const saveVoiceAction = useCallback(
+    async (formData: FormData) => {
+      await actions.saveRealtimeVoice(formData);
+      startTransition(() => router.refresh());
+    },
+    [actions, router, startTransition]
+  );
 
   return (
     <AuroraBackground className="min-h-[100dvh]">
@@ -1269,52 +1308,12 @@ export function AdminDashboard({
                           transition={{ delay: i * 0.03 }}
                           className="relative overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)]/85 p-5 shadow-[var(--shadow-soft)] backdrop-blur-md"
                         >
-                          <div className="mb-3 flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2">
-                              <span className="inline-flex h-8 w-8 items-center justify-center rounded-xl bg-[var(--primary)]/10 text-[var(--primary)]">
-                                {d.sourceType === "pdf" ? (
-                                  <FileText className="h-4 w-4" />
-                                ) : (
-                                  <BookOpen className="h-4 w-4" />
-                                )}
-                              </span>
-                              <div>
-                                <p className="text-xs uppercase tracking-wide text-[var(--muted)]">
-                                  {d.sourceType === "pdf" ? "PDF" : "Text note"}
-                                </p>
-                                <h3 className="truncate text-sm font-semibold">
-                                  {d.title}
-                                </h3>
-                              </div>
-                            </div>
-                            <form action={actions.deleteKnowledgeForm}>
-                              <input type="hidden" name="id" value={d.id} />
-                              <button
-                                type="submit"
-                                className="inline-flex items-center gap-1 rounded-full border border-transparent px-2 py-1 text-[11px] font-medium text-[var(--muted)] transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-500"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                                Delete
-                              </button>
-                            </form>
-                          </div>
-                          <p className="max-h-44 overflow-hidden whitespace-pre-wrap text-sm text-[var(--muted)]">
-                            {d.content.length > 480
-                              ? d.content.slice(0, 480) + "…"
-                              : d.content}
-                          </p>
-                          {d.filePath ? (
-                            <p className="mt-3 text-[11px] text-[var(--muted)]">
-                              Stored: {d.filePath}
-                            </p>
-                          ) : null}
-                          {d.imageCount > 0 ? (
-                            <p className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                              <ImageIcon className="h-3.5 w-3.5 shrink-0" aria-hidden />
-                              {d.imageCount} listing photo
-                              {d.imageCount === 1 ? "" : "s"}
-                            </p>
-                          ) : null}
+                          <KnowledgeDocCard
+                            doc={d}
+                            deleteKnowledgeForm={actions.deleteKnowledgeForm}
+                            updateKnowledgeDocument={actions.updateKnowledgeDocument}
+                            supabaseConfigured={supabaseConfigured}
+                          />
                         </motion.li>
                       ))}
                     </AnimatePresence>
@@ -1355,16 +1354,22 @@ export function AdminDashboard({
                 <FadeIn>
                   <SpotlightCard>
                     <form
-                      action={actions.saveCustomerLocale}
+                      action={saveLocaleAction}
                       className="flex flex-col gap-3 p-5"
                     >
+                      {assistantLocaleDirty ? (
+                        <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-900 dark:text-amber-100">
+                          Unsaved changes — click Save language.
+                        </p>
+                      ) : null}
                       <label className="flex flex-col gap-2">
                         <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                           Visitor language
                         </span>
                         <select
                           name="customerLocale"
-                          defaultValue={customerLocale}
+                          value={localeDraft}
+                          onChange={(e) => setLocaleDraft(e.target.value)}
                           className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] px-3 py-2.5 text-sm text-[var(--foreground)] outline-none ring-[var(--primary)]/40 transition focus:ring-2"
                         >
                           {CUSTOMER_LOCALE_OPTIONS.map((o) => (
@@ -1393,10 +1398,9 @@ export function AdminDashboard({
                 <FadeIn>
                   <SpotlightCard>
                     <VoiceForCallsForm
-                      key={realtimeVoice}
                       defaultVoice={realtimeVoice}
-                      customerLocale={customerLocale}
-                      saveAction={actions.saveRealtimeVoice}
+                      customerLocale={localeDraft}
+                      saveAction={saveVoiceAction}
                     />
                   </SpotlightCard>
                 </FadeIn>
@@ -1404,16 +1408,22 @@ export function AdminDashboard({
                 <FadeIn>
                   <SpotlightCard>
                     <form
-                      action={actions.saveCustomerInstructions}
+                      action={saveInstructionsAction}
                       className="flex flex-col gap-4 p-5"
                     >
+                      {assistantInstructionsDirty ? (
+                        <p className="rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-900 dark:text-amber-100">
+                          Unsaved changes — click Save instructions.
+                        </p>
+                      ) : null}
                       <label className="flex flex-col gap-2">
                         <span className="text-[10px] font-semibold uppercase tracking-wide text-[var(--muted)]">
                           Instructions for customers
                         </span>
                         <textarea
                           name="customerInstructions"
-                          defaultValue={customerInstructions}
+                          value={instructionDraft}
+                          onChange={(e) => setInstructionDraft(e.target.value)}
                           rows={14}
                           placeholder={`Examples you can paste or adapt:
 

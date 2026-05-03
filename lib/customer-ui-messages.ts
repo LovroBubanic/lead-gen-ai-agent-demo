@@ -52,6 +52,9 @@ export type CustomerUiMessages = {
   ariaUnmuteMic: string;
   ariaMuteSpeaker: string;
   ariaUnmuteSpeaker: string;
+  chatRequestFailed: string;
+  voiceToolFailed: string;
+  voiceDashboardSaveFailed: string;
 };
 
 const EN: CustomerUiMessages = {
@@ -107,6 +110,11 @@ const EN: CustomerUiMessages = {
   ariaUnmuteMic: "Unmute microphone",
   ariaMuteSpeaker: "Mute speaker",
   ariaUnmuteSpeaker: "Unmute speaker",
+  chatRequestFailed:
+    "Something went wrong sending your message. Please try again.",
+  voiceToolFailed: "Something went wrong with an action. Please try again.",
+  voiceDashboardSaveFailed:
+    "Could not save to the dashboard. Please try again.",
 };
 
 const ES: CustomerUiMessages = {
@@ -911,7 +919,127 @@ const BY_LOCALE: Record<string, CustomerUiMessages> = {
   zh: ZH,
 };
 
+type VisitorErrorPatch = Pick<
+  CustomerUiMessages,
+  "chatRequestFailed" | "voiceToolFailed" | "voiceDashboardSaveFailed"
+>;
+
+/** Overrides visitor-facing error strings per locale (base packs still spread EN for these until patched). */
+const VISITOR_ERROR_PATCH: Partial<Record<string, VisitorErrorPatch>> = {
+  es: {
+    chatRequestFailed:
+      "No se pudo enviar el mensaje. Por favor, inténtalo de nuevo.",
+    voiceToolFailed:
+      "Algo salió mal con una acción. Por favor, inténtalo de nuevo.",
+    voiceDashboardSaveFailed:
+      "No se pudo guardar en el panel. Por favor, inténtalo de nuevo.",
+  },
+  de: {
+    chatRequestFailed:
+      "Die Nachricht konnte nicht gesendet werden. Bitte versuche es erneut.",
+    voiceToolFailed:
+      "Bei einer Aktion ist ein Fehler aufgetreten. Bitte versuche es erneut.",
+    voiceDashboardSaveFailed:
+      "Speichern im Dashboard fehlgeschlagen. Bitte versuche es erneut.",
+  },
+  fr: {
+    chatRequestFailed:
+      "Impossible d’envoyer le message. Veuillez réessayer.",
+    voiceToolFailed:
+      "Une action a échoué. Veuillez réessayer.",
+    voiceDashboardSaveFailed:
+      "Enregistrement sur le tableau de bord impossible. Veuillez réessayer.",
+  },
+  it: {
+    chatRequestFailed:
+      "Impossibile inviare il messaggio. Riprova.",
+    voiceToolFailed:
+      "Qualcosa è andato storto durante un’azione. Riprova.",
+    voiceDashboardSaveFailed:
+      "Impossibile salvare nella dashboard. Riprova.",
+  },
+  pt: {
+    chatRequestFailed:
+      "Não foi possível enviar a mensagem. Tente novamente.",
+    voiceToolFailed:
+      "Algo falhou numa ação. Tente novamente.",
+    voiceDashboardSaveFailed:
+      "Não foi possível guardar no painel. Tente novamente.",
+  },
+  nl: {
+    chatRequestFailed:
+      "Bericht kon niet worden verzonden. Probeer het opnieuw.",
+    voiceToolFailed:
+      "Er ging iets mis bij een actie. Probeer het opnieuw.",
+    voiceDashboardSaveFailed:
+      "Opslaan op het dashboard mislukt. Probeer het opnieuw.",
+  },
+  pl: {
+    chatRequestFailed:
+      "Nie udało się wysłać wiadomości. Spróbuj ponownie.",
+    voiceToolFailed:
+      "Coś poszło nie tak przy akcji. Spróbuj ponownie.",
+    voiceDashboardSaveFailed:
+      "Nie udało się zapisać w panelu. Spróbuj ponownie.",
+  },
+  sv: {
+    chatRequestFailed:
+      "Meddelandet kunde inte skickas. Försök igen.",
+    voiceToolFailed:
+      "Något gick fel med en åtgärd. Försök igen.",
+    voiceDashboardSaveFailed:
+      "Kunde inte spara till instrumentpanelen. Försök igen.",
+  },
+  da: {
+    chatRequestFailed:
+      "Beskeden kunne ikke sendes. Prøv igen.",
+    voiceToolFailed:
+      "Noget gik galt med en handling. Prøv igen.",
+    voiceDashboardSaveFailed:
+      "Kunne ikke gemme til dashboardet. Prøv igen.",
+  },
+  no: {
+    chatRequestFailed:
+      "Meldingen kunne ikke sendes. Prøv igjen.",
+    voiceToolFailed:
+      "Noe gikk galt med en handling. Prøv igjen.",
+    voiceDashboardSaveFailed:
+      "Kunne ikke lagre til dashbordet. Prøv igjen.",
+  },
+  fi: {
+    chatRequestFailed:
+      "Viestiä ei voitu lähettää. Yritä uudelleen.",
+    voiceToolFailed:
+      "Toiminnossa tapahtui virhe. Yritä uudelleen.",
+    voiceDashboardSaveFailed:
+      "Tallennus hallintapaneeliin epäonnistui. Yritä uudelleen.",
+  },
+  ja: {
+    chatRequestFailed:
+      "メッセージを送信できませんでした。もう一度お試しください。",
+    voiceToolFailed:
+      "操作で問題が発生しました。もう一度お試しください。",
+    voiceDashboardSaveFailed:
+      "ダッシュボードに保存できませんでした。もう一度お試しください。",
+  },
+  ko: {
+    chatRequestFailed:
+      "메시지를 보낼 수 없습니다. 다시 시도하세요.",
+    voiceToolFailed:
+      "작업 중 문제가 발생했습니다. 다시 시도하세요.",
+    voiceDashboardSaveFailed:
+      "대시보드에 저장할 수 없습니다. 다시 시도하세요.",
+  },
+  zh: {
+    chatRequestFailed: "无法发送消息，请重试。",
+    voiceToolFailed: "操作出错，请重试。",
+    voiceDashboardSaveFailed: "无法保存到控制台，请重试。",
+  },
+};
+
 export function getCustomerUiMessages(locale: string): CustomerUiMessages {
   const code = normalizeCustomerLocale(locale);
-  return BY_LOCALE[code] ?? EN;
+  const base = BY_LOCALE[code] ?? EN;
+  const patch = VISITOR_ERROR_PATCH[code];
+  return patch ? { ...base, ...patch } : base;
 }

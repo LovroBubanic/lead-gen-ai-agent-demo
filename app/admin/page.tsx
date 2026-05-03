@@ -21,6 +21,7 @@ import {
   saveCustomerInstructions,
   saveCustomerLocale,
   saveRealtimeVoice,
+  updateKnowledgeDocument,
   updateLeadForm,
   updateMeetingForm,
   uploadKnowledgePdf,
@@ -137,6 +138,7 @@ export default async function AdminPage() {
         saveCustomerInstructions,
         saveCustomerLocale,
         saveRealtimeVoice,
+        updateKnowledgeDocument,
         updateLeadForm,
         updateMeetingForm,
       }}

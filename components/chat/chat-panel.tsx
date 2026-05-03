@@ -495,7 +495,7 @@ export function ChatPanel({ locale }: { locale: string }) {
             animate={{ opacity: 1, y: 0 }}
             className="mx-auto flex max-w-2xl items-center justify-between gap-2 rounded-2xl border border-red-500/40 bg-[color-mix(in_oklab,#ef4444_12%,var(--surface))] px-3 py-2 text-sm text-[color-mix(in_oklab,#991b1b_80%,var(--foreground))] shadow-lg dark:bg-red-950/80 dark:text-red-100"
           >
-            <span className="min-w-0 flex-1 truncate">{error.message}</span>
+            <span className="min-w-0 flex-1 truncate">{t.chatRequestFailed}</span>
             <button
               type="button"
               onClick={() => clearError()}
