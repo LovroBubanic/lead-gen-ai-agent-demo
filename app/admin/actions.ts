@@ -365,7 +365,7 @@ export async function saveRealtimeVoice(formData: FormData) {
 export async function updateKnowledgeDocument(formData: FormData) {
   await assertDashboard();
   const id = String(formData.get("id") ?? "").trim();
-  let title = String(formData.get("title") ?? "").trim();
+  const title = String(formData.get("title") ?? "").trim();
   let content = String(formData.get("content") ?? "").trim();
   if (!id || !title || !content) return;
   if (content.length > MAX_KNOWLEDGE_CONTENT_CHARS) {

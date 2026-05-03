@@ -8,7 +8,6 @@ import {
   CalendarDays,
   ChevronDown,
   Copy,
-  FileText,
   Filter,
   LayoutDashboard,
   LogOut,
