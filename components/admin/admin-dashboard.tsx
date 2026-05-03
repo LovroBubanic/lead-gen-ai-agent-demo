@@ -14,6 +14,7 @@ import {
   MessageSquare,
   Pencil,
   Phone,
+  Palette,
   Search,
   Upload,
   Users,
@@ -24,7 +25,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   defaultOwnerCalendarMonth,
   startOfLocalDay,
@@ -44,14 +45,16 @@ import type {
 } from "./types";
 import { cn } from "@/lib/utils";
 import { AuroraBackground } from "@/components/ui/aurora-background";
-import { CUSTOMER_LOCALE_OPTIONS } from "@/lib/locales";
+import type { VisitorPaletteId } from "@/lib/visitor-ui-palettes";
 import { VoiceForCallsForm } from "@/components/admin/voice-for-calls-form";
+import { DashboardThemeToggle } from "@/components/admin/dashboard-theme-toggle";
+import { VisitorThemesForm } from "@/components/admin/visitor-themes-form";
 import { CountUp } from "@/components/ui/count-up";
 import { FadeIn } from "@/components/ui/fade-in";
 import { GradientText } from "@/components/ui/gradient-text";
 import { ShinyText } from "@/components/ui/shiny-text";
 import { SpotlightCard } from "@/components/ui/spotlight-card";
-import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { CUSTOMER_LOCALE_OPTIONS } from "@/lib/locales";
 
 type DashboardActions = {
   addKnowledgeDocument: (formData: FormData) => void | Promise<void>;
@@ -64,6 +67,8 @@ type DashboardActions = {
   saveCustomerInstructions: (formData: FormData) => void | Promise<void>;
   saveCustomerLocale: (formData: FormData) => void | Promise<void>;
   saveRealtimeVoice: (formData: FormData) => void | Promise<void>;
+  saveDashboardTheme: (formData: FormData) => void | Promise<void>;
+  saveVisitorUiPalette: (formData: FormData) => void | Promise<void>;
   updateLeadForm: (formData: FormData) => void | Promise<void>;
   updateMeetingForm: (formData: FormData) => void | Promise<void>;
 };
@@ -75,13 +80,21 @@ type AdminDashboardProps = {
   customerInstructions: string;
   customerLocale: string;
   realtimeVoice: string;
+  dashboardTheme: "light" | "dark";
+  visitorUiPalette: VisitorPaletteId;
   actions: DashboardActions;
   supabaseConfigured: boolean;
   /** Set when Prisma could not load lists (missing env, DB down, schema drift). */
   dataLoadError?: string | null;
 };
 
-type TabId = "overview" | "leads" | "calendar" | "knowledge" | "assistant";
+type TabId =
+  | "overview"
+  | "leads"
+  | "calendar"
+  | "knowledge"
+  | "assistant"
+  | "themes";
 
 const TABS: {
   id: TabId;
@@ -93,6 +106,7 @@ const TABS: {
   { id: "calendar", label: "Calendar", icon: CalendarDays },
   { id: "knowledge", label: "Knowledge", icon: BookOpen },
   { id: "assistant", label: "AI replies", icon: Bot },
+  { id: "themes", label: "Themes", icon: Palette },
 ];
 
 function startOfWeek(d: Date) {
@@ -146,6 +160,8 @@ export function AdminDashboard({
   customerInstructions,
   customerLocale,
   realtimeVoice,
+  dashboardTheme,
+  visitorUiPalette,
   actions,
   supabaseConfigured,
   dataLoadError = null,
@@ -164,6 +180,25 @@ export function AdminDashboard({
   const [leadCopyFlashId, setLeadCopyFlashId] = useState<string | null>(null);
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const [savedFlash, setSavedFlash] = useState(false);
+  const savedFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flashSaved = useCallback(() => {
+    setSavedFlash(true);
+    if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
+    savedFlashTimerRef.current = setTimeout(() => {
+      setSavedFlash(false);
+      savedFlashTimerRef.current = null;
+    }, 3200);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (savedFlashTimerRef.current) clearTimeout(savedFlashTimerRef.current);
+    },
+    []
+  );
+
   const [leadEditId, setLeadEditId] = useState<string | null>(null);
   const [localeDraft, setLocaleDraft] = useState(customerLocale);
   const [instructionDraft, setInstructionDraft] = useState(customerInstructions);
@@ -299,25 +334,62 @@ export function AdminDashboard({
   const saveLocaleAction = useCallback(
     async (formData: FormData) => {
       await actions.saveCustomerLocale(formData);
+      flashSaved();
       startTransition(() => router.refresh());
     },
-    [actions, router, startTransition]
+    [actions, flashSaved, router, startTransition]
   );
 
   const saveInstructionsAction = useCallback(
     async (formData: FormData) => {
       await actions.saveCustomerInstructions(formData);
+      flashSaved();
       startTransition(() => router.refresh());
     },
-    [actions, router, startTransition]
+    [actions, flashSaved, router, startTransition]
   );
 
   const saveVoiceAction = useCallback(
     async (formData: FormData) => {
       await actions.saveRealtimeVoice(formData);
+      flashSaved();
       startTransition(() => router.refresh());
     },
-    [actions, router, startTransition]
+    [actions, flashSaved, router, startTransition]
+  );
+
+  const saveDashboardThemeAction = useCallback(
+    async (formData: FormData) => {
+      await actions.saveDashboardTheme(formData);
+      flashSaved();
+      startTransition(() => router.refresh());
+    },
+    [actions, flashSaved, router, startTransition]
+  );
+
+  const saveVisitorUiPaletteAction = useCallback(
+    async (formData: FormData) => {
+      await actions.saveVisitorUiPalette(formData);
+    },
+    [actions]
+  );
+
+  const uploadKnowledgePdfAction = useCallback(
+    async (formData: FormData) => {
+      await actions.uploadKnowledgePdf(formData);
+      flashSaved();
+      startTransition(() => router.refresh());
+    },
+    [actions, flashSaved, router, startTransition]
+  );
+
+  const addKnowledgeDocumentAction = useCallback(
+    async (formData: FormData) => {
+      await actions.addKnowledgeDocument(formData);
+      flashSaved();
+      startTransition(() => router.refresh());
+    },
+    [actions, flashSaved, router, startTransition]
   );
 
   return (
@@ -392,10 +464,29 @@ export function AdminDashboard({
                 Log out
               </button>
             </form>
-            <ThemeToggle />
+            <DashboardThemeToggle
+              savedTheme={dashboardTheme}
+              saveAction={saveDashboardThemeAction}
+            />
           </div>
         </div>
       </motion.header>
+
+      <AnimatePresence>
+        {savedFlash ? (
+          <motion.div
+            key="saved-flash"
+            role="status"
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.2 }}
+            className="pointer-events-none fixed right-4 top-20 z-[60] rounded-full border border-emerald-500/40 bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-900 shadow-lg backdrop-blur-md dark:text-emerald-100"
+          >
+            Saved
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
 
       <div className="mx-auto grid w-full max-w-6xl grid-cols-1 gap-6 px-4 py-6 lg:grid-cols-[220px_1fr]">
         <motion.aside
@@ -918,6 +1009,7 @@ export function AdminDashboard({
                                                       setLeadEditId((cur) =>
                                                         cur === l.id ? null : cur
                                                       );
+                                                      flashSaved();
                                                       router.refresh();
                                                     });
                                                 });
@@ -943,6 +1035,7 @@ export function AdminDashboard({
                                                   actions.updateLeadForm(fd)
                                                 ).then(() => {
                                                     setLeadEditId(null);
+                                                    flashSaved();
                                                     router.refresh();
                                                   });
                                               });
@@ -1197,7 +1290,7 @@ export function AdminDashboard({
                           ) : null}
                         </p>
                         <form
-                          action={actions.uploadKnowledgePdf}
+                          action={uploadKnowledgePdfAction}
                           className="flex flex-col gap-3"
                         >
                           <input
@@ -1229,7 +1322,7 @@ export function AdminDashboard({
                           Add a text note
                         </h3>
                         <form
-                          action={actions.addKnowledgeDocument}
+                          action={addKnowledgeDocumentAction}
                           className="flex flex-col gap-3"
                         >
                           <label className="flex flex-col gap-1">
@@ -1310,8 +1403,11 @@ export function AdminDashboard({
                           <KnowledgeDocCard
                             doc={d}
                             deleteKnowledgeForm={actions.deleteKnowledgeForm}
-                            updateKnowledgeDocument={actions.updateKnowledgeDocument}
+                            updateKnowledgeDocument={
+                              actions.updateKnowledgeDocument
+                            }
                             supabaseConfigured={supabaseConfigured}
+                            onAfterMutation={flashSaved}
                           />
                         </motion.li>
                       ))}
@@ -1451,6 +1547,46 @@ export function AdminDashboard({
                 </FadeIn>
               </motion.div>
             ) : null}
+
+            {tab === "themes" ? (
+              <motion.div
+                key="themes"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.25 }}
+                className="flex flex-col gap-5"
+              >
+                <div className="flex flex-col gap-1 rounded-3xl border border-[var(--border)] bg-[var(--surface)]/80 p-5 shadow-[var(--shadow-soft)] backdrop-blur-md">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+                    Visitor experience
+                  </p>
+                  <h2 className="text-xl font-semibold tracking-tight">
+                    <GradientText>Public chat &amp; voice themes</GradientText>
+                  </h2>
+                  <p className="text-sm text-[var(--muted)]">
+                    Choose a color accent for{" "}
+                    <code className="rounded bg-[var(--surface-muted)] px-1">
+                      /chat
+                    </code>{" "}
+                    and{" "}
+                    <code className="rounded bg-[var(--surface-muted)] px-1">
+                      /call
+                    </code>
+                    . Changes apply after you save.
+                  </p>
+                </div>
+                <FadeIn>
+                  <SpotlightCard>
+                    <VisitorThemesForm
+                      savedPalette={visitorUiPalette}
+                      saveAction={saveVisitorUiPaletteAction}
+                      onSaved={flashSaved}
+                    />
+                  </SpotlightCard>
+                </FadeIn>
+              </motion.div>
+            ) : null}
           </AnimatePresence>
         </div>
       </div>
@@ -1462,6 +1598,7 @@ export function AdminDashboard({
         onClose={() => setDrawerOpen(false)}
         deleteAction={actions.deleteMeetingForm}
         updateMeetingForm={actions.updateMeetingForm}
+        onAfterMutation={flashSaved}
       />
     </AuroraBackground>
   );

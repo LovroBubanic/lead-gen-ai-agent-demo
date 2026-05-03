@@ -24,6 +24,7 @@ type KnowledgeDocCardProps = {
   deleteKnowledgeForm: (formData: FormData) => void | Promise<void>;
   updateKnowledgeDocument: (formData: FormData) => void | Promise<void>;
   supabaseConfigured: boolean;
+  onAfterMutation?: () => void;
 };
 
 export function KnowledgeDocCard({
@@ -31,6 +32,7 @@ export function KnowledgeDocCard({
   deleteKnowledgeForm,
   updateKnowledgeDocument,
   supabaseConfigured,
+  onAfterMutation,
 }: KnowledgeDocCardProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -69,9 +71,10 @@ export function KnowledgeDocCard({
         await fn(formData);
         startTransition(() => {
           router.refresh();
+          onAfterMutation?.();
         });
       },
-    [router]
+    [router, onAfterMutation]
   );
 
   const editDirty =
@@ -228,6 +231,7 @@ export function KnowledgeDocCard({
                     startTransition(() => {
                       setEditOpen(false);
                       router.refresh();
+                      onAfterMutation?.();
                     });
                   }}
                   className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto"

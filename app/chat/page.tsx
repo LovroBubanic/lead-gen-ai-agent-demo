@@ -1,10 +1,13 @@
 import { ChatPanel } from "@/components/chat/chat-panel";
-import { getAgentLocale } from "@/lib/customer-ai-settings";
+import { getAgentLocale, getVisitorUiPalette } from "@/lib/customer-ai-settings";
 
 export const dynamic = "force-dynamic";
 
 export default async function ChatPage() {
-  const locale = await getAgentLocale();
-  return <ChatPanel locale={locale} />;
+  const [locale, visitorPalette] = await Promise.all([
+    getAgentLocale(),
+    getVisitorUiPalette(),
+  ]);
+  return <ChatPanel locale={locale} visitorPalette={visitorPalette} />;
 }
 

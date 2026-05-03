@@ -38,6 +38,10 @@ model AgentSettings {
   customerLocale       String   @default("en")
   /// OpenAI Realtime voice id used for customer voice calls.
   realtimeVoice        String   @db.Text @default("marin")
+  /// light | dark — persisted owner dashboard appearance (also synced to localStorage on admin).
+  dashboardTheme       String   @default("light")
+  /// Color palette id for public /chat and /call (see lib/visitor-ui-palettes.ts).
+  visitorUiPalette     String   @default("default")
   updatedAt            DateTime @updatedAt
 }
 

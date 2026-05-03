@@ -32,6 +32,7 @@ import type { CustomerUiMessages } from "@/lib/customer-ui-messages";
 import { getCustomerUiMessages } from "@/lib/customer-ui-messages";
 import { localeLabel, normalizeCustomerLocale } from "@/lib/locales";
 import { normalizeOpenAIRealtimeVoice } from "@/lib/openai-realtime-voices";
+import type { VisitorPaletteId } from "@/lib/visitor-ui-palettes";
 
 type Phase = "idle" | "connecting" | "live" | "error";
 
@@ -153,9 +154,11 @@ function CallTimer({ phase }: { phase: Phase }) {
 export function RealtimeCallPanel({
   locale,
   voice,
+  visitorPalette,
 }: {
   locale: string;
   voice: string;
+  visitorPalette: VisitorPaletteId;
 }) {
   const t = useMemo(() => getCustomerUiMessages(locale), [locale]);
   const visitorLangCode = useMemo(
@@ -547,8 +550,14 @@ export function RealtimeCallPanel({
           ? "border-red-500/40 bg-red-500/12 text-red-950 dark:border-red-400/35 dark:bg-red-500/12 dark:text-red-50"
           : "border-[var(--border)] bg-[var(--surface)]/60 text-[var(--foreground)]";
 
+  const paletteProps =
+    visitorPalette !== "default"
+      ? ({ "data-ui-palette": visitorPalette } as const)
+      : {};
+
   return (
-    <AuroraBackground className="min-h-[100dvh] text-[var(--foreground)]">
+    <div className="min-h-[100dvh]" {...paletteProps}>
+      <AuroraBackground className="min-h-[100dvh] text-[var(--foreground)]">
       <motion.header
         initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -808,5 +817,6 @@ export function RealtimeCallPanel({
         </div>
       </motion.footer>
     </AuroraBackground>
+    </div>
   );
 }

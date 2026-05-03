@@ -15,6 +15,7 @@ import { asImagePathList, isHttpImageRef } from "@/lib/listing-images";
 import { getSupabaseServiceRole } from "@/lib/supabase-server";
 import { normalizeCustomerLocale } from "@/lib/locales";
 import { normalizeOpenAIRealtimeVoice } from "@/lib/openai-realtime-voices";
+import { normalizeVisitorPalette } from "@/lib/visitor-ui-palettes";
 
 const PDF_MAX_BYTES = 8 * 1024 * 1024;
 const KNOWLEDGE_BUCKET = "knowledge-pdfs";
@@ -301,6 +302,15 @@ async function ensureAgentSettingsVoiceColumn() {
   );
 }
 
+async function ensureAgentSettingsThemeColumns() {
+  await prisma.$executeRaw(
+    Prisma.sql`ALTER TABLE "AgentSettings" ADD COLUMN IF NOT EXISTS "dashboardTheme" TEXT NOT NULL DEFAULT 'light'`
+  );
+  await prisma.$executeRaw(
+    Prisma.sql`ALTER TABLE "AgentSettings" ADD COLUMN IF NOT EXISTS "visitorUiPalette" TEXT NOT NULL DEFAULT 'default'`
+  );
+}
+
 /** Ensures the singleton row exists without overwriting existing columns. */
 async function ensureAgentSettingsRow() {
   await prisma.$executeRaw(
@@ -359,6 +369,40 @@ export async function saveRealtimeVoice(formData: FormData) {
     `
   );
   revalidatePath("/admin");
+  revalidatePath("/call");
+}
+
+export async function saveDashboardTheme(formData: FormData) {
+  await assertDashboard();
+  const raw = String(formData.get("dashboardTheme") ?? "").trim().toLowerCase();
+  const theme = raw === "dark" ? "dark" : raw === "light" ? "light" : null;
+  if (!theme) return;
+  await ensureAgentSettingsThemeColumns();
+  await ensureAgentSettingsRow();
+  await prisma.$executeRaw(
+    Prisma.sql`
+      UPDATE "AgentSettings"
+      SET "dashboardTheme" = ${theme}, "updatedAt" = NOW()
+      WHERE "id" = ${AGENT_SETTINGS_ID}
+    `
+  );
+  revalidatePath("/admin");
+}
+
+export async function saveVisitorUiPalette(formData: FormData) {
+  await assertDashboard();
+  const palette = normalizeVisitorPalette(String(formData.get("visitorUiPalette") ?? ""));
+  await ensureAgentSettingsThemeColumns();
+  await ensureAgentSettingsRow();
+  await prisma.$executeRaw(
+    Prisma.sql`
+      UPDATE "AgentSettings"
+      SET "visitorUiPalette" = ${palette}, "updatedAt" = NOW()
+      WHERE "id" = ${AGENT_SETTINGS_ID}
+    `
+  );
+  revalidatePath("/admin");
+  revalidatePath("/chat");
   revalidatePath("/call");
 }
 

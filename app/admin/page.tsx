@@ -9,7 +9,10 @@ import {
   getAgentLocale,
   getAgentRealtimeVoice,
   getCustomerResponseInstructions,
+  getDashboardTheme,
+  getVisitorUiPalette,
 } from "@/lib/customer-ai-settings";
+import type { VisitorPaletteId } from "@/lib/visitor-ui-palettes";
 import { asImagePathList } from "@/lib/listing-images";
 import { getSupabaseServiceRole } from "@/lib/supabase-server";
 import {
@@ -20,7 +23,9 @@ import {
   logoutDashboard,
   saveCustomerInstructions,
   saveCustomerLocale,
+  saveDashboardTheme,
   saveRealtimeVoice,
+  saveVisitorUiPalette,
   updateKnowledgeDocument,
   updateLeadForm,
   updateMeetingForm,
@@ -83,18 +88,32 @@ export default async function AdminPage() {
   let customerInstructions = "";
   let customerLocale = "en";
   let realtimeVoice = "marin";
+  let dashboardTheme: "light" | "dark" = "light";
+  let visitorUiPalette: VisitorPaletteId = "default";
   let dataLoadError: string | null = null;
 
   try {
-    const [leadsRaw, docsRaw, meetingsRaw, instructions, locale, voice] =
-      await Promise.all([
-        prisma.lead.findMany({ orderBy: { createdAt: "desc" } }),
-        prisma.knowledgeDocument.findMany({ orderBy: { createdAt: "desc" } }),
-        prisma.meeting.findMany({ orderBy: { startAt: "asc" } }),
-        getCustomerResponseInstructions(),
-        getAgentLocale(),
-        getAgentRealtimeVoice(),
-      ]);
+    const [
+      leadsRaw,
+      docsRaw,
+      meetingsRaw,
+      instructions,
+      locale,
+      voice,
+      dashTheme,
+      visitorPalette,
+    ] = await Promise.all([
+      prisma.lead.findMany({ orderBy: { createdAt: "desc" } }),
+      prisma.knowledgeDocument.findMany({ orderBy: { createdAt: "desc" } }),
+      prisma.meeting.findMany({ orderBy: { startAt: "asc" } }),
+      getCustomerResponseInstructions(),
+      getAgentLocale(),
+      getAgentRealtimeVoice(),
+      getDashboardTheme(),
+      getVisitorUiPalette(),
+    ]);
+    dashboardTheme = dashTheme;
+    visitorUiPalette = visitorPalette;
     const serialized = serializeRows(leadsRaw, docsRaw, meetingsRaw);
     leads = serialized.leads;
     docs = serialized.docs;
@@ -111,11 +130,14 @@ export default async function AdminPage() {
       dataLoadError =
         "Database query failed. Check DATABASE_URL / DIRECT_URL and that Prisma schema is applied.";
     }
-    [customerInstructions, customerLocale, realtimeVoice] = await Promise.all([
-      getCustomerResponseInstructions(),
-      getAgentLocale(),
-      getAgentRealtimeVoice(),
-    ]);
+    [customerInstructions, customerLocale, realtimeVoice, dashboardTheme, visitorUiPalette] =
+      await Promise.all([
+        getCustomerResponseInstructions(),
+        getAgentLocale(),
+        getAgentRealtimeVoice(),
+        getDashboardTheme(),
+        getVisitorUiPalette(),
+      ]);
   }
 
   return (
@@ -126,6 +148,8 @@ export default async function AdminPage() {
       customerInstructions={customerInstructions}
       customerLocale={customerLocale}
       realtimeVoice={realtimeVoice}
+      dashboardTheme={dashboardTheme}
+      visitorUiPalette={visitorUiPalette}
       supabaseConfigured={supabaseConfigured}
       dataLoadError={dataLoadError}
       actions={{
@@ -137,7 +161,9 @@ export default async function AdminPage() {
         uploadKnowledgePdf,
         saveCustomerInstructions,
         saveCustomerLocale,
+        saveDashboardTheme,
         saveRealtimeVoice,
+        saveVisitorUiPalette,
         updateKnowledgeDocument,
         updateLeadForm,
         updateMeetingForm,

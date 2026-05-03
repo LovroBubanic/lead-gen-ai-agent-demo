@@ -25,6 +25,7 @@ import { AuroraBackground } from "@/components/ui/aurora-background";
 import { GradientText } from "@/components/ui/gradient-text";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { getCustomerUiMessages } from "@/lib/customer-ui-messages";
+import type { VisitorPaletteId } from "@/lib/visitor-ui-palettes";
 
 type ChatMessageMetadata = {
   voicePlaybackUrl?: string;
@@ -159,7 +160,13 @@ function TypingDots() {
   );
 }
 
-export function ChatPanel({ locale }: { locale: string }) {
+export function ChatPanel({
+  locale,
+  visitorPalette,
+}: {
+  locale: string;
+  visitorPalette: VisitorPaletteId;
+}) {
   const t = useMemo(() => getCustomerUiMessages(locale), [locale]);
   const bottomRef = useRef<HTMLDivElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -295,8 +302,14 @@ export function ChatPanel({ locale }: { locale: string }) {
     last?.role === "user" &&
     (last ? messageText(last).length > 0 : false);
 
+  const paletteProps =
+    visitorPalette !== "default"
+      ? ({ "data-ui-palette": visitorPalette } as const)
+      : {};
+
   return (
-    <AuroraBackground className="h-[100dvh] max-h-[100dvh] min-h-0 text-[var(--foreground)]">
+    <div className="h-[100dvh] max-h-[100dvh] min-h-0" {...paletteProps}>
+      <AuroraBackground className="h-[100dvh] max-h-[100dvh] min-h-0 text-[var(--foreground)]">
       <motion.header
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -625,5 +638,6 @@ export function ChatPanel({ locale }: { locale: string }) {
         </div>
       </motion.footer>
     </AuroraBackground>
+    </div>
   );
 }

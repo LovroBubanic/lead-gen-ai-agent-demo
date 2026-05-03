@@ -27,6 +27,7 @@ type MeetingDrawerProps = {
   onClose: () => void;
   deleteAction: (formData: FormData) => void | Promise<void>;
   updateMeetingForm: (formData: FormData) => void | Promise<void>;
+  onAfterMutation?: () => void;
 };
 
 function formatDay(d: Date) {
@@ -77,6 +78,7 @@ export function MeetingDrawer({
   onClose,
   deleteAction,
   updateMeetingForm,
+  onAfterMutation,
 }: MeetingDrawerProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -214,6 +216,7 @@ export function MeetingDrawer({
                                   ).then(() => {
                                     setEditingMeetingId(null);
                                     router.refresh();
+                                    onAfterMutation?.();
                                   });
                                 });
                               }}
@@ -522,7 +525,10 @@ export function MeetingDrawer({
                                       startTransition(() => {
                                         void Promise.resolve(
                                           deleteAction(fd)
-                                        ).then(() => router.refresh());
+                                        ).then(() => {
+                                          router.refresh();
+                                          onAfterMutation?.();
+                                        });
                                       });
                                     }}
                                     className="inline-flex items-center gap-1 rounded-full border border-transparent px-2.5 py-1 text-[11px] font-medium text-[var(--muted)] transition hover:border-red-500/30 hover:bg-red-500/10 hover:text-red-500"

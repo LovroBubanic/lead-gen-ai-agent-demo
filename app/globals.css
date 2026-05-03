@@ -137,6 +137,111 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/* ---- Visitor /chat + /call color palettes (light) ---- */
+[data-ui-palette="ocean"] {
+  --primary: #0e7490;
+  --primary-hover: #0d9488;
+  --primary-foreground: #ffffff;
+  --accent: #06b6d4;
+  --accent-2: #38bdf8;
+  --ring: #0891b2;
+  --grad-brand: linear-gradient(135deg, #0e7490 0%, #06b6d4 45%, #38bdf8 100%);
+  --grad-aurora: radial-gradient(circle at 20% 20%, #0891b233, transparent 50%),
+    radial-gradient(circle at 80% 10%, #06b6d438, transparent 55%),
+    radial-gradient(circle at 50% 90%, #22d3ee2e, transparent 60%);
+}
+
+[data-ui-palette="forest"] {
+  --primary: #047857;
+  --primary-hover: #059669;
+  --primary-foreground: #ffffff;
+  --accent: #10b981;
+  --accent-2: #34d399;
+  --ring: #059669;
+  --grad-brand: linear-gradient(135deg, #047857 0%, #10b981 50%, #34d399 100%);
+  --grad-aurora: radial-gradient(circle at 20% 20%, #05966933, transparent 50%),
+    radial-gradient(circle at 80% 12%, #10b98136, transparent 55%),
+    radial-gradient(circle at 50% 92%, #22c55e2c, transparent 60%);
+}
+
+[data-ui-palette="sunset"] {
+  --primary: #ea580c;
+  --primary-hover: #f97316;
+  --primary-foreground: #ffffff;
+  --accent: #f472b6;
+  --accent-2: #fb923c;
+  --ring: #f97316;
+  --grad-brand: linear-gradient(135deg, #ea580c 0%, #f97316 45%, #f472b6 100%);
+  --grad-aurora: radial-gradient(circle at 22% 18%, #fb923c38, transparent 50%),
+    radial-gradient(circle at 78% 12%, #f472b638, transparent 55%),
+    radial-gradient(circle at 50% 88%, #fdba742e, transparent 60%);
+}
+
+[data-ui-palette="midnight"] {
+  --primary: #7c3aed;
+  --primary-hover: #8b5cf6;
+  --primary-foreground: #ffffff;
+  --accent: #a78bfa;
+  --accent-2: #38bdf8;
+  --ring: #8b5cf6;
+  --grad-brand: linear-gradient(135deg, #6d28d9 0%, #7c3aed 40%, #38bdf8 100%);
+  --grad-aurora: radial-gradient(circle at 18% 22%, #7c3aed40, transparent 50%),
+    radial-gradient(circle at 82% 14%, #6366f142, transparent 55%),
+    radial-gradient(circle at 52% 90%, #22d3ee30, transparent 60%);
+}
+
+html[data-theme="dark"] [data-ui-palette="ocean"] {
+  --primary: #22d3ee;
+  --primary-hover: #67e8f9;
+  --primary-foreground: #0c1222;
+  --accent: #06b6d4;
+  --accent-2: #38bdf8;
+  --ring: #22d3ee;
+  --grad-brand: linear-gradient(135deg, #22d3ee 0%, #06b6d4 45%, #38bdf8 100%);
+  --grad-aurora: radial-gradient(circle at 20% 20%, #22d3ee4d, transparent 50%),
+    radial-gradient(circle at 80% 10%, #06b6d44d, transparent 55%),
+    radial-gradient(circle at 50% 90%, #38bdf833, transparent 60%);
+}
+
+html[data-theme="dark"] [data-ui-palette="forest"] {
+  --primary: #34d399;
+  --primary-hover: #6ee7b7;
+  --primary-foreground: #0c1222;
+  --accent: #10b981;
+  --accent-2: #6ee7b7;
+  --ring: #34d399;
+  --grad-brand: linear-gradient(135deg, #34d399 0%, #10b981 50%, #6ee7b7 100%);
+  --grad-aurora: radial-gradient(circle at 20% 20%, #34d39944, transparent 50%),
+    radial-gradient(circle at 80% 12%, #10b98146, transparent 55%),
+    radial-gradient(circle at 50% 92%, #22c55e38, transparent 60%);
+}
+
+html[data-theme="dark"] [data-ui-palette="sunset"] {
+  --primary: #fb923c;
+  --primary-hover: #fdba74;
+  --primary-foreground: #1c1008;
+  --accent: #fb7185;
+  --accent-2: #fbbf24;
+  --ring: #fb923c;
+  --grad-brand: linear-gradient(135deg, #fb923c 0%, #fb7185 45%, #fbbf24 100%);
+  --grad-aurora: radial-gradient(circle at 22% 18%, #fb923c45, transparent 50%),
+    radial-gradient(circle at 78% 12%, #fb718544, transparent 55%),
+    radial-gradient(circle at 50% 88%, #fecdd338, transparent 60%);
+}
+
+html[data-theme="dark"] [data-ui-palette="midnight"] {
+  --primary: #a78bfa;
+  --primary-hover: #c4b5fd;
+  --primary-foreground: #0c1222;
+  --accent: #818cf8;
+  --accent-2: #22d3ee;
+  --ring: #a78bfa;
+  --grad-brand: linear-gradient(135deg, #a78bfa 0%, #818cf8 45%, #22d3ee 100%);
+  --grad-aurora: radial-gradient(circle at 18% 22%, #a78bfa50, transparent 50%),
+    radial-gradient(circle at 82% 14%, #6366f148, transparent 55%),
+    radial-gradient(circle at 52% 90%, #22d3ee36, transparent 60%);
+}
+
 * {
   border-color: var(--border);
 }

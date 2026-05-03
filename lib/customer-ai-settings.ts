@@ -2,6 +2,8 @@ import { Prisma } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
 import { normalizeCustomerLocale } from "@/lib/locales";
 import { normalizeOpenAIRealtimeVoice } from "@/lib/openai-realtime-voices";
+import type { VisitorPaletteId } from "@/lib/visitor-ui-palettes";
+import { normalizeVisitorPalette } from "@/lib/visitor-ui-palettes";
 
 export const AGENT_SETTINGS_ID = "global" as const;
 
@@ -52,5 +54,40 @@ export async function getAgentRealtimeVoice(): Promise<string> {
     );
   } catch {
     return normalizeOpenAIRealtimeVoice(process.env.OPENAI_REALTIME_VOICE);
+  }
+}
+
+function normalizeDashboardTheme(
+  v: string | null | undefined
+): "light" | "dark" {
+  if (v === "dark" || v === "light") return v;
+  return "light";
+}
+
+/**
+ * Owner dashboard light/dark preference.
+ */
+export async function getDashboardTheme(): Promise<"light" | "dark"> {
+  try {
+    const rows = await prisma.$queryRaw<Array<{ dashboardTheme: string | null }>>(
+      Prisma.sql`SELECT "dashboardTheme" FROM "AgentSettings" WHERE "id" = ${AGENT_SETTINGS_ID} LIMIT 1`
+    );
+    return normalizeDashboardTheme(rows[0]?.dashboardTheme ?? null);
+  } catch {
+    return "light";
+  }
+}
+
+/**
+ * Public chat/call color palette id.
+ */
+export async function getVisitorUiPalette(): Promise<VisitorPaletteId> {
+  try {
+    const rows = await prisma.$queryRaw<Array<{ visitorUiPalette: string | null }>>(
+      Prisma.sql`SELECT "visitorUiPalette" FROM "AgentSettings" WHERE "id" = ${AGENT_SETTINGS_ID} LIMIT 1`
+    );
+    return normalizeVisitorPalette(rows[0]?.visitorUiPalette ?? null);
+  } catch {
+    return "default";
   }
 }
