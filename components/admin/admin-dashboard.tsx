@@ -144,13 +144,13 @@ function leadDetailsPlainText(l: SerializedLead): string {
   ].join("\n");
 }
 
-function avatarGradient(seed: string) {
+function avatarFill(seed: string) {
   let h = 0;
   for (let i = 0; i < seed.length; i++) {
     h = (h * 31 + seed.charCodeAt(i)) >>> 0;
   }
-  const hue = h % 360;
-  return `linear-gradient(135deg, hsl(${hue} 80% 62%), hsl(${(hue + 60) % 360} 80% 58%))`;
+  const l = 36 + (h % 20);
+  return `hsl(24 6% ${l}%)`;
 }
 
 export function AdminDashboard({
@@ -536,7 +536,7 @@ export function AdminDashboard({
                   className={cn(
                     "relative inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full px-3 py-2 text-sm font-medium transition",
                     active
-                      ? "bg-[linear-gradient(135deg,#6366f1,#8b5cf6)] text-white shadow-[0_10px_30px_-12px_rgba(99,102,241,0.6)]"
+                      ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-[var(--shadow-soft)]"
                       : "text-[var(--muted)]"
                   )}
                 >
@@ -568,28 +568,24 @@ export function AdminDashboard({
                     title="Total leads"
                     value={stats.totalLeads}
                     hint={`${stats.leadsLast7} new · last 7 days`}
-                    gradient="from-[#6366f1] to-[#8b5cf6]"
                     delay={0}
                   />
                   <StatCard
                     title="Meetings upcoming"
                     value={stats.upcomingMeetings}
                     hint={`${stats.thisWeekMeetings} this calendar week`}
-                    gradient="from-[#22d3ee] to-[#6366f1]"
                     delay={0.05}
                   />
                   <StatCard
                     title="Knowledge docs"
                     value={stats.knowledgeDocs}
                     hint="injected into the agent"
-                    gradient="from-[#ec4899] to-[#8b5cf6]"
                     delay={0.1}
                   />
                   <StatCard
                     title="Total bookings"
                     value={stats.totalMeetings}
                     hint="since launch"
-                    gradient="from-[#10b981] to-[#22d3ee]"
                     delay={0.15}
                   />
                 </div>
@@ -634,7 +630,7 @@ export function AdminDashboard({
                                 <span
                                   className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white shadow-sm"
                                   style={{
-                                    background: avatarGradient(
+                                    background: avatarFill(
                                       l.id + (l.email ?? "")
                                     ),
                                   }}
@@ -884,7 +880,7 @@ export function AdminDashboard({
                                   <span
                                     className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold text-white"
                                     style={{
-                                      background: avatarGradient(
+                                      background: avatarFill(
                                         l.id + (l.email ?? "")
                                       ),
                                     }}
@@ -1099,7 +1095,7 @@ export function AdminDashboard({
                                             <button
                                               type="submit"
                                               disabled={isPending}
-                                              className="inline-flex w-fit items-center gap-2 rounded-full bg-[linear-gradient(135deg,#6366f1,#8b5cf6)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
+                                              className="inline-flex w-fit items-center gap-2 rounded-full bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--primary-foreground)] shadow-[var(--shadow-soft)] transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
                                             >
                                               Save lead
                                             </button>
@@ -1304,7 +1300,7 @@ export function AdminDashboard({
                             type="submit"
                             whileHover={{ y: -1 }}
                             whileTap={{ scale: 0.97 }}
-                            className="inline-flex items-center gap-1.5 self-start rounded-full bg-[linear-gradient(135deg,#6366f1,#8b5cf6)] px-4 py-2 text-sm font-semibold text-white shadow-[0_10px_30px_-12px_rgba(99,102,241,0.7)] transition hover:brightness-110"
+                            className="inline-flex items-center gap-1.5 self-start rounded-full bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--primary-foreground)] shadow-[var(--shadow-soft)] transition hover:bg-[var(--primary-hover)]"
                           >
                             <Upload className="h-4 w-4" />
                             Ingest PDF
@@ -1537,7 +1533,7 @@ export function AdminDashboard({
                         type="submit"
                         whileHover={{ y: -1 }}
                         whileTap={{ scale: 0.98 }}
-                        className="inline-flex items-center gap-2 self-start rounded-full bg-[linear-gradient(135deg,#6366f1,#8b5cf6)] px-5 py-2.5 text-sm font-semibold text-white shadow-[0_10px_30px_-12px_rgba(99,102,241,0.7)] transition hover:brightness-110"
+                        className="inline-flex items-center gap-2 self-start rounded-full bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] shadow-[var(--shadow-soft)] transition hover:bg-[var(--primary-hover)]"
                       >
                         <Bot className="h-4 w-4" aria-hidden />
                         Save instructions
@@ -1608,13 +1604,11 @@ function StatCard({
   title,
   value,
   hint,
-  gradient,
   delay = 0,
 }: {
   title: string;
   value: number;
   hint: string;
-  gradient: string;
   delay?: number;
 }) {
   return (
@@ -1624,13 +1618,6 @@ function StatCard({
       transition={{ delay, type: "spring", stiffness: 340, damping: 28 }}
       className="relative overflow-hidden rounded-3xl border border-[var(--border)] bg-[var(--surface)]/85 p-5 shadow-[var(--shadow-soft)] backdrop-blur-md"
     >
-      <div
-        aria-hidden
-        className={cn(
-          "pointer-events-none absolute -right-10 -top-10 h-28 w-28 rounded-full bg-gradient-to-br opacity-40 blur-2xl",
-          gradient
-        )}
-      />
       <div className="relative">
         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--muted)]">
           {title}
@@ -1656,14 +1643,6 @@ function OverviewHero({
   return (
     <FadeIn>
       <div className="relative overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[var(--surface)]/85 shadow-[var(--shadow-elevated)] backdrop-blur-md">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(circle at 15% 20%, rgba(99,102,241,0.22), transparent 55%), radial-gradient(circle at 85% 10%, rgba(168,85,247,0.22), transparent 60%), radial-gradient(circle at 50% 100%, rgba(34,211,238,0.18), transparent 60%)",
-          }}
-        />
         <div className="relative grid grid-cols-1 gap-5 p-6 md:grid-cols-[1.4fr_1fr] md:gap-8">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">

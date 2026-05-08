@@ -18,7 +18,6 @@ export function AuroraBackground({
 }: AuroraBackgroundProps) {
   return (
     <div className="relative isolate overflow-hidden bg-[var(--background)]">
-      <div className="aurora-bg" aria-hidden />
       {showGrid ? (
         <div className="pointer-events-none absolute inset-0 dot-grid opacity-40" aria-hidden />
       ) : null}

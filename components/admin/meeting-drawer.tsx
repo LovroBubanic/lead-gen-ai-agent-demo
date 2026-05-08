@@ -53,11 +53,11 @@ function typeMeta(type: string | null) {
     case "google_meet":
       return { label: "Google Meet", Icon: Video, color: "#34a853" };
     case "zoom":
-      return { label: "Zoom", Icon: Video, color: "#2d8cff" };
+      return { label: "Zoom", Icon: Video, color: "#57534e" };
     case "phone":
-      return { label: "Phone", Icon: Phone, color: "#a855f7" };
+      return { label: "Phone", Icon: Phone, color: "#78716c" };
     default:
-      return { label: type ?? "Meeting", Icon: Calendar, color: "#6366f1" };
+      return { label: type ?? "Meeting", Icon: Calendar, color: "#44403c" };
   }
 }
 
@@ -179,7 +179,7 @@ export function MeetingDrawer({
                         <div
                           className="h-1.5 w-full"
                           style={{
-                            background: `linear-gradient(90deg, ${meta.color}, color-mix(in oklab, ${meta.color} 30%, transparent))`,
+                            background: meta.color,
                           }}
                         />
                         <div className="p-4">
@@ -325,7 +325,7 @@ export function MeetingDrawer({
                                 <button
                                   type="submit"
                                   disabled={isPending}
-                                  className="inline-flex items-center gap-1.5 rounded-full bg-[linear-gradient(135deg,#6366f1,#8b5cf6)] px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
+                                  className="inline-flex items-center gap-1.5 rounded-full bg-[var(--primary)] px-4 py-2 text-sm font-semibold text-[var(--primary-foreground)] shadow-[var(--shadow-soft)] transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
                                 >
                                   Save changes
                                 </button>

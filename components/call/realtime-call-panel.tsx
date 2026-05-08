@@ -628,7 +628,7 @@ export function RealtimeCallPanel({
                   className="pointer-events-none absolute inset-0 rounded-full"
                   style={{
                     boxShadow:
-                      "0 0 80px 12px rgba(99,102,241,0.35), 0 0 140px 30px rgba(168,85,247,0.25)",
+                      "0 0 48px 8px color-mix(in oklab, var(--success) 28%, transparent), 0 0 100px 20px color-mix(in oklab, var(--success) 14%, transparent)",
                   }}
                 />
               ) : null}
@@ -646,9 +646,7 @@ export function RealtimeCallPanel({
               }}
               className="relative flex h-52 w-52 items-center justify-center rounded-full sm:h-60 sm:w-60"
               style={{
-                background:
-                  "conic-gradient(from 120deg at 50% 50%, #6366f1, #a855f7, #22d3ee, #ec4899, #6366f1)",
-                filter: "blur(0.5px)",
+                background: "color-mix(in oklab, var(--success) 55%, var(--surface-muted))",
               }}
             >
               <div className="absolute inset-[6px] rounded-full bg-[var(--background)]/90 shadow-inner" />
@@ -730,25 +728,10 @@ export function RealtimeCallPanel({
               whileTap={{ scale: 0.96 }}
               whileHover={{ y: -1 }}
               onClick={() => void connectCall()}
-              className="relative inline-flex h-16 items-center justify-center gap-2.5 overflow-hidden rounded-full bg-[linear-gradient(135deg,#10b981,#22c55e)] px-10 text-base font-semibold text-white shadow-[0_18px_50px_-18px_rgba(16,185,129,0.7)] transition hover:brightness-110"
+              className="inline-flex h-16 items-center justify-center gap-2.5 rounded-full bg-emerald-700 px-10 text-base font-semibold text-white shadow-[var(--shadow-soft)] transition hover:bg-emerald-800"
             >
-              <span
-                aria-hidden
-                className="pointer-events-none absolute -inset-y-2 -left-1/2 w-1/3 rotate-12 bg-gradient-to-r from-transparent via-white/45 to-transparent blur-sm [animation:sweep_2.6s_ease-in-out_infinite]"
-              />
-              <Phone className="relative h-5 w-5" aria-hidden />
-              <span className="relative">{t.startCall}</span>
-              <style jsx>{`
-                @keyframes sweep {
-                  0% {
-                    transform: translateX(-140%) rotate(12deg);
-                  }
-                  60%,
-                  100% {
-                    transform: translateX(380%) rotate(12deg);
-                  }
-                }
-              `}</style>
+              <Phone className="h-5 w-5" aria-hidden />
+              <span>{t.startCall}</span>
             </motion.button>
           ) : null}
 
@@ -789,7 +772,7 @@ export function RealtimeCallPanel({
                   setError(null);
                 }}
                 aria-label={t.ariaEndCall}
-                className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-gradient-to-br from-red-500 to-red-700 text-white shadow-[0_18px_44px_-12px_rgba(239,68,68,0.7)] transition hover:brightness-110"
+                className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-red-600 text-white shadow-[var(--shadow-soft)] transition hover:bg-red-700"
               >
                 <PhoneOff className="h-7 w-7" />
               </motion.button>

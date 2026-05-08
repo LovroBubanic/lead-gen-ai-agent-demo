@@ -22,15 +22,6 @@ export default async function AdminLoginPage({ searchParams }: Props) {
     <AuroraBackground className="flex min-h-[100dvh] items-center justify-center px-4 py-10">
       <FadeIn className="w-full max-w-md">
         <div className="relative overflow-hidden rounded-[2rem] border border-[var(--border)] bg-[var(--surface)]/85 p-8 shadow-[var(--shadow-elevated)] backdrop-blur-xl">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -left-16 -top-16 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(99,102,241,0.35),transparent_70%)] blur-2xl"
-          />
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -right-16 -bottom-16 h-40 w-40 rounded-full bg-[radial-gradient(circle,rgba(168,85,247,0.35),transparent_70%)] blur-2xl"
-          />
-
           <div className="relative flex items-center gap-2.5">
             <div className="leading-tight">
               <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">
@@ -72,7 +63,7 @@ export default async function AdminLoginPage({ searchParams }: Props) {
               <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
                 Gateway token
               </span>
-              <div className="group relative flex items-center overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] focus-within:border-[var(--primary)]/60 focus-within:shadow-[0_0_0_4px_rgba(99,102,241,0.12)] transition">
+              <div className="group relative flex items-center overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--surface-muted)] focus-within:border-[var(--primary)]/60 focus-within:shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_14%,transparent)] transition">
                 <span className="pl-3 text-[var(--muted)]">
                   <Lock className="h-4 w-4" />
                 </span>
@@ -89,20 +80,10 @@ export default async function AdminLoginPage({ searchParams }: Props) {
             </label>
             <button
               type="submit"
-              className="relative inline-flex items-center justify-center gap-2 overflow-hidden rounded-xl bg-[linear-gradient(135deg,#6366f1,#8b5cf6)] py-2.5 text-sm font-semibold text-white shadow-[0_18px_50px_-18px_rgba(99,102,241,0.7)] transition hover:brightness-110 focus-ring"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--primary)] py-2.5 text-sm font-semibold text-[var(--primary-foreground)] shadow-[var(--shadow-soft)] transition hover:bg-[var(--primary-hover)] focus-ring"
             >
-              <span
-                aria-hidden
-                className="pointer-events-none absolute -inset-y-2 -left-1/2 w-1/3 rotate-12 bg-gradient-to-r from-transparent via-white/35 to-transparent blur-sm [animation:sweep_2.6s_ease-in-out_infinite]"
-              />
-              <KeyRound className="relative h-4 w-4" />
-              <span className="relative">Unlock dashboard</span>
-              <style>{`
-                @keyframes sweep {
-                  0% { transform: translateX(-140%) rotate(12deg); }
-                  60%,100% { transform: translateX(380%) rotate(12deg); }
-                }
-              `}</style>
+              <KeyRound className="h-4 w-4" />
+              <span>Unlock dashboard</span>
             </button>
           </form>
 

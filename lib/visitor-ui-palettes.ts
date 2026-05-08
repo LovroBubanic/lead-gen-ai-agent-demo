@@ -13,11 +13,11 @@ export const VISITOR_PALETTE_OPTIONS: {
   label: string;
   hint: string;
 }[] = [
-  { id: "default", label: "Indigo aurora", hint: "Original gradient brand look" },
-  { id: "ocean", label: "Ocean", hint: "Teal and cyan" },
+  { id: "default", label: "Charcoal", hint: "Neutral stone for chat and voice" },
+  { id: "ocean", label: "Steel", hint: "Cool gray zinc accents" },
   { id: "forest", label: "Forest", hint: "Emerald and sage" },
-  { id: "sunset", label: "Sunset", hint: "Rose and amber warmth" },
-  { id: "midnight", label: "Midnight", hint: "Deep violet and slate" },
+  { id: "sunset", label: "Sunset", hint: "Amber and warm orange" },
+  { id: "midnight", label: "Midnight", hint: "Deep warm charcoal" },
 ];
 
 const ALLOWED = new Set<string>(VISITOR_PALETTE_IDS);

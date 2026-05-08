@@ -88,14 +88,14 @@ export function VisitorThemesForm({
                   style={{
                     background:
                       opt.id === "default"
-                        ? "linear-gradient(90deg,#6366f1,#8b5cf6,#ec4899)"
+                        ? "#292524"
                         : opt.id === "ocean"
-                          ? "linear-gradient(90deg,#0e7490,#06b6d4,#38bdf8)"
+                          ? "#3f3f46"
                           : opt.id === "forest"
-                            ? "linear-gradient(90deg,#047857,#10b981,#34d399)"
+                            ? "#166534"
                             : opt.id === "sunset"
-                              ? "linear-gradient(90deg,#ea580c,#fb923c,#f472b6)"
-                              : "linear-gradient(90deg,#6d28d9,#8b5cf6,#22d3ee)",
+                              ? "#c2410c"
+                              : "#1c1917",
                   }}
                 />
               </button>
@@ -107,7 +107,7 @@ export function VisitorThemesForm({
           disabled={isPending || !dirty}
           whileHover={{ y: -1 }}
           whileTap={{ scale: 0.98 }}
-          className="inline-flex w-fit items-center gap-2 rounded-full bg-[linear-gradient(135deg,#6366f1,#8b5cf6)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:pointer-events-none disabled:opacity-40"
+          className="inline-flex w-fit items-center gap-2 rounded-full bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] shadow-[var(--shadow-soft)] transition hover:bg-[var(--primary-hover)] disabled:pointer-events-none disabled:opacity-40"
         >
           <Save className="h-4 w-4" aria-hidden />
           Save theme

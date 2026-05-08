@@ -20,7 +20,7 @@ type ClickSparkProps = {
 export function ClickSpark({
   children,
   className,
-  color = "#818cf8",
+  color = "#57534e",
   count = 10,
   duration = 520,
   disabled,

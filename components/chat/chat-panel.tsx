@@ -420,7 +420,7 @@ export function ChatPanel({
                       }}
                       className={`relative max-w-[86%] rounded-[1.4rem] px-4 py-2.5 text-[15px] leading-relaxed shadow-md ${
                         isUser
-                          ? "bg-[linear-gradient(135deg,#6366f1,#8b5cf6)] text-white shadow-[0_12px_30px_-12px_rgba(99,102,241,0.7)]"
+                          ? "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-[var(--shadow-soft)]"
                           : "border border-[var(--border)]/80 bg-[var(--surface)]/90 text-[var(--foreground)] backdrop-blur-xl"
                       }`}
                     >
@@ -453,7 +453,7 @@ export function ChatPanel({
                           isUser ? "-right-1" : "-left-1"
                         } h-3 w-3 rotate-45 rounded-sm ${
                           isUser
-                            ? "bg-[linear-gradient(135deg,#8b5cf6,#6366f1)]"
+                            ? "bg-[var(--primary)]"
                             : "border-b border-r border-[var(--border)]/80 bg-[var(--surface)]/90"
                         }`}
                       />
@@ -594,7 +594,7 @@ export function ChatPanel({
             }}
           >
             <div
-              className={`relative flex h-12 flex-1 items-center overflow-hidden rounded-full border bg-[var(--surface)]/90 transition focus-within:border-[var(--primary)]/60 focus-within:shadow-[0_0_0_4px_rgba(99,102,241,0.12)] ${
+              className={`relative flex h-12 flex-1 items-center overflow-hidden rounded-full border bg-[var(--surface)]/90 transition focus-within:border-[var(--primary)]/60 focus-within:shadow-[0_0_0_4px_color-mix(in_oklab,var(--primary)_14%,transparent)] ${
                 busy ? "opacity-60" : ""
               } border-[var(--border)]`}
             >
@@ -625,7 +625,7 @@ export function ChatPanel({
               whileTap={{ scale: 0.92 }}
               whileHover={{ y: -1 }}
               disabled={busy || recording}
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[linear-gradient(135deg,#6366f1,#8b5cf6)] text-white shadow-[0_12px_30px_-12px_rgba(99,102,241,0.7)] transition hover:brightness-110 disabled:opacity-50"
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[var(--primary)] text-[var(--primary-foreground)] shadow-[var(--shadow-soft)] transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
               aria-label={t.ariaSend}
             >
               {busy && !recording ? (

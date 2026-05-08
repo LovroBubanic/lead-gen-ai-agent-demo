@@ -292,7 +292,7 @@ export function KnowledgeDocCard({
                     <button
                       type="submit"
                       disabled={isPending}
-                      className="inline-flex items-center gap-2 rounded-full bg-[linear-gradient(135deg,#6366f1,#8b5cf6)] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:brightness-110 disabled:opacity-50"
+                      className="inline-flex items-center gap-2 rounded-full bg-[var(--primary)] px-5 py-2.5 text-sm font-semibold text-[var(--primary-foreground)] shadow-[var(--shadow-soft)] transition hover:bg-[var(--primary-hover)] disabled:opacity-50"
                     >
                       Save changes
                     </button>

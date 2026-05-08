@@ -230,7 +230,7 @@ export function CalendarView({
                   className={cn(
                     "inline-flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs font-semibold tabular-nums",
                     isToday &&
-                      "bg-[linear-gradient(135deg,#6366f1,#8b5cf6)] text-white shadow-[0_0_12px_rgba(129,140,248,0.55)]",
+                      "bg-[var(--primary)] text-[var(--primary-foreground)] shadow-[var(--shadow-soft)]",
                     !isToday && isSelected && "bg-[var(--primary)]/10 text-[var(--primary)]",
                     !isToday && !isSelected && inMonth && "text-[var(--foreground)]",
                     !inMonth && "text-[var(--muted)]/60"
@@ -284,7 +284,7 @@ export function CalendarView({
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-[var(--border)] bg-[var(--surface-muted)]/40 px-4 py-2.5 text-[11px] text-[var(--muted)]">
         <div className="flex items-center gap-3">
           <span className="inline-flex items-center gap-1.5">
-            <span className="inline-block h-2 w-2 rounded-full bg-[linear-gradient(135deg,#6366f1,#8b5cf6)]" />
+            <span className="inline-block h-2 w-2 rounded-full bg-[var(--primary)]" />
             Today
           </span>
           <span className="inline-flex items-center gap-1.5">
