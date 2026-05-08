@@ -273,6 +273,7 @@ button {
   box-shadow: var(--shadow-elevated);
 }
 
+.gradient-text {
   color: var(--foreground);
   font-weight: 600;
   background: none;
