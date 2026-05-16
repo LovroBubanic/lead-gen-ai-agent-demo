@@ -409,11 +409,11 @@ export function AdminDashboard({
                 <code className="rounded bg-black/10 px-1 py-0.5 dark:bg-white/10">
                   DATABASE_URL
                 </code>{" "}
-                and{" "}
+                (and{" "}
                 <code className="rounded bg-black/10 px-1 py-0.5 dark:bg-white/10">
-                  DIRECT_URL
+                  TURSO_AUTH_TOKEN
                 </code>{" "}
-                on the host (e.g. Vercel), run{" "}
+                for Turso) on the host (e.g. Railway), run{" "}
                 <code className="rounded bg-black/10 px-1 py-0.5 dark:bg-white/10">
                   prisma db push
                 </code>{" "}

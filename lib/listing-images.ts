@@ -1,9 +1,26 @@
-import type { Prisma } from "@prisma/client";
-
-export function asImagePathList(v: Prisma.JsonValue | null | undefined): string[] {
+export function asImagePathList(v: unknown): string[] {
   if (v == null) return [];
-  if (!Array.isArray(v)) return [];
-  return v.filter((x): x is string => typeof x === "string");
+  if (Array.isArray(v)) {
+    return v.filter((x): x is string => typeof x === "string");
+  }
+  if (typeof v === "string") {
+    const s = v.trim();
+    if (!s) return [];
+    try {
+      const parsed = JSON.parse(s) as unknown;
+      if (!Array.isArray(parsed)) return [];
+      return parsed.filter((x): x is string => typeof x === "string");
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+/** Persist listing image URLs/paths as JSON in SQLite (`KnowledgeDocument.imagePaths`). */
+export function imagePathsToDb(paths: string[]): string | null {
+  if (!paths.length) return null;
+  return JSON.stringify(paths);
 }
 
 export function isHttpImageRef(path: string): boolean {

@@ -11,7 +11,11 @@ import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { parseBookMeetingIsoToUtc } from "@/lib/meeting-datetime";
 import { AGENT_SETTINGS_ID } from "@/lib/customer-ai-settings";
-import { asImagePathList, isHttpImageRef } from "@/lib/listing-images";
+import {
+  asImagePathList,
+  imagePathsToDb,
+  isHttpImageRef,
+} from "@/lib/listing-images";
 import { getSupabaseServiceRole } from "@/lib/supabase-server";
 import { normalizeCustomerLocale } from "@/lib/locales";
 import { normalizeOpenAIRealtimeVoice } from "@/lib/openai-realtime-voices";
@@ -125,7 +129,7 @@ export async function addKnowledgeDocument(formData: FormData) {
   if (uploadedPaths.length > 0) {
     await prisma.knowledgeDocument.update({
       where: { id: doc.id },
-      data: { imagePaths: uploadedPaths },
+      data: { imagePaths: imagePathsToDb(uploadedPaths) },
     });
   }
   revalidatePath("/admin");
@@ -316,7 +320,7 @@ async function ensureAgentSettingsRow() {
   await prisma.$executeRaw(
     Prisma.sql`
       INSERT INTO "AgentSettings" ("id", "customerInstructions", "customerLocale", "updatedAt")
-      VALUES (${AGENT_SETTINGS_ID}, '', 'en', NOW())
+      VALUES (${AGENT_SETTINGS_ID}, '', 'en', CURRENT_TIMESTAMP)
       ON CONFLICT ("id") DO NOTHING
     `
   );
@@ -332,7 +336,7 @@ export async function saveCustomerInstructions(formData: FormData) {
   await prisma.$executeRaw(
     Prisma.sql`
       UPDATE "AgentSettings"
-      SET "customerInstructions" = ${text}, "updatedAt" = NOW()
+      SET "customerInstructions" = ${text}, "updatedAt" = CURRENT_TIMESTAMP
       WHERE "id" = ${AGENT_SETTINGS_ID}
     `
   );
@@ -347,7 +351,7 @@ export async function saveCustomerLocale(formData: FormData) {
   await prisma.$executeRaw(
     Prisma.sql`
       UPDATE "AgentSettings"
-      SET "customerLocale" = ${locale}, "updatedAt" = NOW()
+      SET "customerLocale" = ${locale}, "updatedAt" = CURRENT_TIMESTAMP
       WHERE "id" = ${AGENT_SETTINGS_ID}
     `
   );
@@ -364,7 +368,7 @@ export async function saveRealtimeVoice(formData: FormData) {
   await prisma.$executeRaw(
     Prisma.sql`
       UPDATE "AgentSettings"
-      SET "realtimeVoice" = ${voice}, "updatedAt" = NOW()
+      SET "realtimeVoice" = ${voice}, "updatedAt" = CURRENT_TIMESTAMP
       WHERE "id" = ${AGENT_SETTINGS_ID}
     `
   );
@@ -382,7 +386,7 @@ export async function saveDashboardTheme(formData: FormData) {
   await prisma.$executeRaw(
     Prisma.sql`
       UPDATE "AgentSettings"
-      SET "dashboardTheme" = ${theme}, "updatedAt" = NOW()
+      SET "dashboardTheme" = ${theme}, "updatedAt" = CURRENT_TIMESTAMP
       WHERE "id" = ${AGENT_SETTINGS_ID}
     `
   );
@@ -397,7 +401,7 @@ export async function saveVisitorUiPalette(formData: FormData) {
   await prisma.$executeRaw(
     Prisma.sql`
       UPDATE "AgentSettings"
-      SET "visitorUiPalette" = ${palette}, "updatedAt" = NOW()
+      SET "visitorUiPalette" = ${palette}, "updatedAt" = CURRENT_TIMESTAMP
       WHERE "id" = ${AGENT_SETTINGS_ID}
     `
   );
@@ -460,7 +464,7 @@ export async function updateKnowledgeDocument(formData: FormData) {
     data: {
       title,
       content,
-      ...(pathsChanged ? { imagePaths: mergedPaths } : {}),
+      ...(pathsChanged ? { imagePaths: imagePathsToDb(mergedPaths) } : {}),
     },
   });
   revalidatePath("/admin");

@@ -1,11 +1,11 @@
 /**
  * Demo knowledge for a fictional UK estate agency — listings with mock photos (Unsplash source via picsum).
- * Run: npx prisma db seed   (requires DATABASE_URL / DIRECT_URL)
+ * Run: npm run db:seed   (requires DATABASE_URL; Turso also needs TURSO_AUTH_TOKEN)
  * Re-run safe: removes prior rows whose titles start with "[Demo UK Estate]".
  */
-import { PrismaClient } from "@prisma/client";
+import { createPrismaClient } from "./libsql-prisma.mjs";
 
-const prisma = new PrismaClient();
+const prisma = createPrismaClient();
 
 const PREFIX = "[Demo UK Estate]";
 
@@ -211,7 +211,7 @@ async function main() {
       title: d.title,
       content: d.content,
       sourceType: "text",
-      ...(d.imagePaths ? { imagePaths: d.imagePaths } : {}),
+      ...(d.imagePaths ? { imagePaths: JSON.stringify(d.imagePaths) } : {}),
     })),
   });
   console.log(`Inserted ${result.count} knowledge document(s).`);

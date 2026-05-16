@@ -1,13 +1,11 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
-  provider  = "postgresql"
-  // App runtime: transaction pooler (6543, pgbouncer=true)
-  url       = env("DATABASE_URL")
-  // prisma db push: session pooler (5432, same user postgres.<ref>) — avoids hangs on :6543
-  directUrl = env("DIRECT_URL")
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 model Lead {
@@ -22,22 +20,22 @@ model Lead {
 model KnowledgeDocument {
   id         String   @id @default(cuid())
   title      String
-  content    String   @db.Text
+  content    String
   sourceType String   @default("text") // text | pdf
   filePath   String? // Supabase Storage path in bucket `knowledge-pdfs`, if uploaded
-  /// JSON string array: Supabase object paths and/or https URLs for listing photos (chat tool `showListingImage`).
-  imagePaths Json?
+  /// JSON array of strings: Supabase object paths and/or https URLs for listing photos (chat tool `showListingImage`).
+  imagePaths String?
   createdAt  DateTime @default(now())
 }
 
 /// Singleton row (`id = "global"`): how the owner wants the agent to talk to visitors.
 model AgentSettings {
   id                   String   @id @default("global")
-  customerInstructions String   @db.Text @default("")
+  customerInstructions String   @default("")
   /// ISO 639-1 language code for visitor UI, chat, and voice (e.g. en, es, de).
   customerLocale       String   @default("en")
   /// OpenAI Realtime voice id used for customer voice calls.
-  realtimeVoice        String   @db.Text @default("marin")
+  realtimeVoice        String   @default("marin")
   /// light | dark — persisted owner dashboard appearance (also synced to localStorage on admin).
   dashboardTheme       String   @default("light")
   /// Color palette id for public /chat and /call (see lib/visitor-ui-palettes.ts).
@@ -52,11 +50,11 @@ model Meeting {
   endAt           DateTime
   attendeeName    String?
   attendeeEmail   String?
-  notes           String?  @db.Text
+  notes           String?
   /// google_meet | zoom | phone | other — how the owner should join
   meetingType     String?
   /// Link (Meet/Zoom) or phone number the visitor agreed to
-  locationDetail  String?  @db.Text
+  locationDetail  String?
   bookedByAgent   Boolean  @default(true)
   createdAt       DateTime @default(now())
 }

@@ -1,6 +1,6 @@
 # AI Customer Support & Lead Gen Agent
 
-A **sellable, self-hosted** web app: your customers talk to an AI on a **public chat page**, while **you (the business owner)** use a **separate, private dashboard** to view leads, upload business knowledge (text + PDFs), and see meetings the agent booked. The stack is designed to move cleanly to **Railway** hosting and **Supabase** for data.
+A **sellable, self-hosted** web app: your customers talk to an AI on a **public chat page**, while **you (the business owner)** use a **separate, private dashboard** to view leads, upload business knowledge (text + PDFs), and see meetings the agent booked. The stack is designed to move cleanly to **Railway** hosting with **Turso** (LibSQL) or local **SQLite** for data.
 
 This README always reflects the **current** behaviour of the code in this folder.
 
@@ -19,6 +19,17 @@ Planned for later versions (not fully implemented here): Pinecone-style RAG, Goo
 
 ---
 
+## Database — demo vs production
+
+| Environment | Database | Notes |
+|-------------|----------|-------|
+| **Portfolio demo** | [Turso](https://turso.tech) (LibSQL / SQLite-compatible) | Free tier, never auto-pauses. Used for the live "try it yourself" deployment. |
+| **Production / self-hosted** | **Turso** or any libSQL-compatible host; **`file:`** SQLite for small installs. This repo ships **Prisma + SQLite** only (no bundled Postgres schema). |
+
+The default configuration uses **SQLite** (local `file:` or remote **`libsql://`** on Turso). Optional **Supabase Storage** remains available for PDF originals only (not the primary database).
+
+---
+
 ## AI stack (LangGraph + OpenAI)
 
 - **Text chat (`/chat`)** — The server builds a **LangGraph** `createReactAgent` graph with **ChatOpenAI** and the same **captureLead** / **bookMeeting** tool runners as the rest of the app (`lib/agent-tools.ts`). The HTTP response uses the **AI SDK UI message stream** (`createUIMessageStream` / `createUIMessageStreamResponse`) so the existing `useChat` UI keeps working.
@@ -33,8 +44,8 @@ Meetings use **`meetingType`** (`google_meet`, `zoom`, `phone`, `other`) and **`
 
 ## Troubleshooting
 
-- **Leads or meetings empty after chat/voice** — Confirm **`DATABASE_URL`** reaches your Supabase pooler (project not paused, password correct, `?sslmode=require`, outbound **5432** / **6543** allowed). Run `npm run check:db-env` and `npm run db:push`. During a voice call, open the browser **Network** tab and confirm **`/api/realtime/tool`** returns **200** when the model invokes a tool; check server logs for `[realtime/tool]` lines.
-- **Prisma “Can’t reach database server”** — Usually wrong or blocked pooler URL, paused project, or local firewall. Fix connectivity before debugging application code.
+- **Leads or meetings empty after chat/voice** — Confirm **`DATABASE_URL`** reaches your database (Turso: **`libsql://`** URL + **`TURSO_AUTH_TOKEN`**). Run `npm run check:db-env` and `npm run db:push`. During a voice call, open the browser **Network** tab and confirm **`/api/realtime/tool`** returns **200** when the model invokes a tool; check server logs for `[realtime/tool]` lines.
+- **Prisma “Can’t reach database server”** — Usually wrong Turso URL/token, or blocked outbound HTTPS. Fix connectivity before debugging application code.
 - **Dev server: `ENOENT` `_buildManifest.js.tmp.*` (often on Windows + Turbopack)** — Stop the dev server, delete the **`Project/.next`** folder, then run **`npm run dev`** again. If it keeps happening, use **`npm run dev:webpack`** (Webpack dev server instead of Turbopack) or exclude the project folder from aggressive antivirus/backup sync.
 
 ---
@@ -43,12 +54,12 @@ Meetings use **`meetingType`** (`google_meet`, `zoom`, `phone`, `other`) and **`
 
 | Piece | Where it lives |
 |--------|----------------|
-| **Postgres data** (leads, meetings, knowledge rows) | **Supabase** project. **`DATABASE_URL`** (transaction pooler) + **`DIRECT_URL`** (session pooler for `db push`). |
-| **PDF binaries** (optional) | **Supabase Storage** bucket `knowledge-pdfs`, if you set `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. If Storage is not configured, **only extracted text** is kept in Postgres. |
+| **App data** (leads, meetings, knowledge, agent settings) | **Turso** (`libsql://` + `TURSO_AUTH_TOKEN`) or local **`file:`** SQLite. See **Database setup** below. |
+| **PDF binaries** (optional) | **Supabase Storage** bucket `knowledge-pdfs`, if you set `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. If Storage is not configured, **only extracted text** is kept in the database. |
 | **Application code** | This repo, **`Project/`** folder (Next.js app root). |
-| **Secrets** (OpenAI key, gateway token, Supabase service role) | **Environment variables** only (local `.env`, Railway variables in production). Never commit real secrets. |
+| **Secrets** (OpenAI key, gateway token, Turso token, Supabase service role) | **Environment variables** only (local `.env`, Railway variables in production). Never commit real secrets. |
 
-There is **no SQLite** in the current schema: the database is **PostgreSQL** (Supabase).
+The Prisma schema targets **SQLite**; the runtime uses the **libSQL** driver (`@libsql/client` + `@prisma/adapter-libsql`).
 
 ---
 
@@ -60,16 +71,35 @@ Copy **`.env.example`** → **`.env`** in this folder (`Project/.env`). Next.js 
 |----------|----------|---------|
 | `OPENAI_API_KEY` | **Yes** (for chat) | Server-side calls to OpenAI. |
 | `OPENAI_MODEL` | No | Chat model id for LangGraph / ChatOpenAI (default **`gpt-4o-mini`**). |
-| `DATABASE_URL` | **Yes** | **Transaction** pooler (port **6543**, `pgbouncer=true`). Next.js runtime. |
-| `DIRECT_URL` | **Yes** | **Session** pooler (port **5432**), same host and **`postgres.<ref>`** user as above. Prisma `db push` only (avoids hangs on :6543). |
+| `DATABASE_URL` | **Yes** | **`libsql://…`** (Turso) or **`file:./dev.db`** (local SQLite under `prisma/`). |
+| `TURSO_AUTH_TOKEN` | **Yes** when using Turso | Database auth token from `turso db tokens create`. Not used for `file:` URLs. |
 | `DASHBOARD_GATEWAY_TOKEN` | **Yes in production** | Long secret the owner types at `/admin/login`. Also used to sign the **httpOnly session cookie** (HS256 via `jose`). **Minimum 32 characters.** |
-| `NEXT_PUBLIC_SUPABASE_URL` | Optional | Supabase project URL (for Storage uploads). |
+| `NEXT_PUBLIC_SUPABASE_URL` | Optional | Supabase project URL (for Storage uploads only). |
 | `SUPABASE_SERVICE_ROLE_KEY` | Optional | **Server only.** Uploads PDF originals to Storage. Never expose to the browser. |
 
 If `DASHBOARD_GATEWAY_TOKEN` is missing or shorter than 32 characters:
 
 - **Production** — `/admin` (except `/admin/login`) returns **503** until you set a proper token.
 - **Development** — `/admin` is allowed **without** login so you can iterate quickly; **set the token before any real deployment.**
+
+---
+
+## Database setup (Turso or local SQLite)
+
+1. Copy **`.env.example`** → **`.env`** and set **`DATABASE_URL`**:
+   - **Turso:** `libsql://your-db-yourorg.turso.io` from `turso db show <name> --url`, plus **`TURSO_AUTH_TOKEN`** from `turso db tokens create <name>`.
+   - **Local file:** `DATABASE_URL="file:./dev.db"` (creates `prisma/dev.db`; path is relative to the `prisma/` folder).
+2. From **`Project/`**:
+
+```bash
+npm run check:db-env
+npm run db:push
+npm run db:seed
+```
+
+`db:seed` loads the same **fictional UK estate agency** demo knowledge and listing copy as before (titles prefixed with `[Demo UK Estate]`).
+
+**Remote Turso + Prisma CLI:** Prisma’s support for applying schema to hosted libSQL varies by version. If `npm run db:push` fails against a `libsql://` URL, use **`file:./dev.db`** for `db:push` locally (creates `prisma/dev.db`), then apply the resulting SQL to Turso with **`turso db shell <db-name> < migration.sql`** (see [Turso + Prisma](https://docs.turso.tech/sdk/ts/orm/prisma)).
 
 ---
 
@@ -84,53 +114,22 @@ The app uses the key **only on the server** (e.g. `app/api/chat/route.ts`, Realt
 
 ---
 
-## Supabase: database + optional PDF storage
+## Supabase: optional PDF storage
 
-### 1) Create a project
+> **Note:** The primary database is **SQLite (libSQL / Turso)**. This section is **only** for optional **Supabase Storage** of PDF originals.
 
-1. Go to [https://supabase.com/dashboard](https://supabase.com/dashboard) and create a project.
-2. Wait until the database is ready (green “Healthy” / finished provisioning).
+### 1) Create a project (for Storage only)
 
-### Supabase — simplest setup (two pooler URLs)
+1. Go to [https://supabase.com/dashboard](https://supabase.com/dashboard) and create a project (or use an existing one).
+2. Wait until the project is ready if it was just created.
 
-1. Supabase → **Connect** → **ORMs** → **Prisma**.
-2. Copy **Transaction** → **`DATABASE_URL`** (port **6543**, must include **`pgbouncer=true`**).
-3. Copy **Session** → **`DIRECT_URL`** (port **5432**, same `aws-0-…pooler.supabase.com` host and same **`postgres.<ref>`** user).
-4. Use the **exact same password** in both lines (the database password you chose in Supabase). **Do not** wrap it in **`[` `]`** — docs show `[YOUR_PASSWORD]` only as a placeholder; including brackets causes **P1000**.
-5. Add **`?sslmode=require`** if not already on both URLs.
-6. From **`Project/`**:
-
-```bash
-npm run check:db-env
-npm run db:push
-```
-
-Why two URLs: **`prisma db push`** uses **`DIRECT_URL`**. The transaction pooler (**6543**) can **hang** for migrations; the session pooler (**5432**) is the supported pair per [Supabase + Prisma](https://supabase.com/docs/guides/database/prisma).
-
-#### Still stuck?
-
-1. **Unpause** the project in the dashboard.
-2. Reset **Database password**, paste fresh **Transaction** + **Session** strings again.
-3. Allow outbound **5432** and **6543** to `*.pooler.supabase.com`.
-4. Delete **`Project/.next`** after env changes.
-
-### 3) Apply the schema (local or CI)
-
-From **`Project/`** with **`DATABASE_URL` and `DIRECT_URL`** in `.env`:
-
-```bash
-npm run db:push
-```
-
-This runs `prisma generate` and `prisma db push` against **your** Supabase database (creates/updates tables: `Lead`, `Meeting`, `KnowledgeDocument`).
-
-### 4) Storage bucket for PDF originals (optional)
+### 2) Storage bucket for PDF originals
 
 1. **Storage → New bucket** → name: **`knowledge-pdfs`**.  
 2. Keep it **private** (no public anon upload policies).  
 3. **Project Settings → API**: copy **Project URL** → `NEXT_PUBLIC_SUPABASE_URL`, and **service_role** key → `SUPABASE_SERVICE_ROLE_KEY` (server only).
 
-If these are omitted, PDF upload still works: **text is extracted and stored** in Postgres; the raw file is simply not archived in Storage.
+If these are omitted, PDF upload still works: **text is extracted and stored** in your SQLite / Turso database; the raw file is simply not archived in Storage.
 
 ---
 
@@ -159,15 +158,16 @@ If these are omitted, PDF upload still works: **text is extracted and stored** i
 
 2. **Environment** — copy `.env.example` to `.env` and fill:
    - `OPENAI_API_KEY`
-   - **`DATABASE_URL`** + **`DIRECT_URL`** (Connect → ORMs → Prisma → **Transaction** + **Session**) — see **Supabase — simplest setup** below
+   - **`DATABASE_URL`** (Turso `libsql://…` + **`TURSO_AUTH_TOKEN`**, or local **`file:./dev.db`**) — see **Database setup**
    - `DASHBOARD_GATEWAY_TOKEN` (32+ chars; recommended for local too)
    - Optionally Supabase Storage vars and create bucket `knowledge-pdfs`.
 
-3. **Database schema**:
+3. **Database schema and demo data**:
 
    ```bash
    npm run check:db-env
    npm run db:push
+   npm run db:seed
    ```
 
 4. **Run the app**:
@@ -186,10 +186,10 @@ If these are omitted, PDF upload still works: **text is extracted and stored** i
 1. Create a **new Railway service** from this repo; set the **root directory** to **`Project`** (the folder that contains `package.json` and `next.config.ts`). If you only deploy this app, the service root should be **`Project/`**, not the parent marketing/docs folder.
 2. **Build command:** `npm run build`  
 3. **Start command:** `npm run start`
-4. Add the **same environment variables** as in `.env.example` (OpenAI, **`DATABASE_URL` + `DIRECT_URL`**, gateway token, optional Supabase Storage).
+4. Add the **same environment variables** as in `.env.example` (OpenAI, **`DATABASE_URL`** + **`TURSO_AUTH_TOKEN`** when using Turso, gateway token, optional Supabase Storage).
 5. Use your Railway **HTTPS URL** for production; update any marketing links to `/chat` only.
 
-Railway runs **Node**; your **data** still lives in **Supabase Postgres** (and optionally Supabase Storage), not on Railway’s filesystem.
+Railway runs **Node**; your **data** lives in **Turso** (or another libSQL-compatible host) / SQLite, not on Railway’s filesystem.
 
 ---
 
@@ -201,8 +201,9 @@ Railway runs **Node**; your **data** still lives in **Supabase Postgres** (and o
 | `npm run dev:webpack` | Same without Turbopack (fallback if `.next` manifest errors on Windows). |
 | `npm run build` | `prisma generate` + production Next build. |
 | `npm run start` | Production server (after `build`). |
-| `npm run db:push` | `prisma generate` + `prisma db push` (schema to Supabase). |
-| `npm run check:db-env` | Verifies pooler URLs use `postgres.<project-ref>` (avoids common **P1000**). |
+| `npm run db:push` | `prisma generate` + `prisma db push` (SQLite schema to the DB in `DATABASE_URL`). |
+| `npm run db:seed` | Inserts demo UK estate knowledge rows (safe re-run). |
+| `npm run check:db-env` | Verifies `DATABASE_URL` is `libsql:` + token or `file:` SQLite. |
 | `npm run lint` | ESLint. |
 
 Scripts call **`node ./node_modules/next/...`** and **`node node_modules/prisma/...`** so Windows paths containing **`&`** do not break `npx`.
@@ -220,7 +221,7 @@ Scripts call **`node ./node_modules/next/...`** and **`node node_modules/prisma/
 | `lib/langgraph/` | Sales chat graph (`createReactAgent`), UI message → LangChain adapter, stream bridge. |
 | `app/api/realtime/tool/` | Executes the same tools for OpenAI Realtime voice. |
 | `app/api/transcribe/` | Whisper-class transcription for voice notes. |
-| `prisma/schema.prisma` | Postgres models. |
+| `prisma/schema.prisma` | SQLite models (`Lead`, `Meeting`, `KnowledgeDocument`, `AgentSettings`). |
 | `middleware.ts` | Protects `/admin` routes. |
 | `lib/knowledge.ts` | Builds knowledge context for the model. |
 | `lib/dashboard-session.ts` | Signed session cookie helpers. |

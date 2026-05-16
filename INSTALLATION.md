@@ -7,8 +7,8 @@ This guide installs the AI customer support, lead generation, booking, knowledge
 - Node.js 20 or newer.
 - npm.
 - OpenAI API key with access to the configured chat and Realtime models.
-- Supabase project for Postgres.
-- Supabase Storage if you want PDF archives and uploaded listing photos.
+- [Turso](https://turso.tech) database (recommended for hosted demo) **or** local SQLite via a `file:` URL.
+- Supabase **only if** you want PDF originals archived in Storage (optional).
 - Vercel account for hosting.
 
 ## 1. Install Locally
@@ -35,11 +35,24 @@ Fill in `.env`:
 
 ```env
 OPENAI_API_KEY="sk-..."
-DATABASE_URL="postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-eu-west-1.pooler.supabase.com:6543/postgres?pgbouncer=true&sslmode=require"
-DIRECT_URL="postgresql://postgres.PROJECT_REF:PASSWORD@aws-0-eu-west-1.pooler.supabase.com:5432/postgres?sslmode=require"
+DATABASE_URL="libsql://your-db-yourorg.turso.io"
+TURSO_AUTH_TOKEN="your-token-from-turso-db-tokens-create"
+DASHBOARD_GATEWAY_TOKEN="a-long-random-secret-at-least-32-characters"
+```
+
+For **local SQLite** instead of Turso:
+
+```env
+DATABASE_URL="file:./dev.db"
+```
+
+(omit `TURSO_AUTH_TOKEN` when using `file:`.)
+
+Optional Supabase Storage (PDF archives):
+
+```env
 NEXT_PUBLIC_SUPABASE_URL="https://xxxxx.supabase.co"
 SUPABASE_SERVICE_ROLE_KEY="..."
-DASHBOARD_GATEWAY_TOKEN="a-long-random-secret-at-least-32-characters"
 ```
 
 Optional Realtime voice variables:
@@ -56,25 +69,28 @@ Optional image allowlist for externally hosted demo/listing photos:
 KNOWLEDGE_IMAGE_ALLOWED_HOSTS="picsum.photos,images.unsplash.com"
 ```
 
-## 2. Supabase Setup
+## 2. Turso setup (hosted database)
 
-1. Create a Supabase project.
-2. Copy the **Prisma transaction pooler** URL to `DATABASE_URL`.
-3. Copy the **session pooler** URL to `DIRECT_URL`.
-4. Make sure both URLs include `sslmode=require`.
-5. Do not include square brackets around the password.
+1. Install the [Turso CLI](https://docs.turso.tech/cli/installation) and run `turso auth login`.
+2. `turso db create <name>` then `turso db show <name> --url` → `DATABASE_URL`.
+3. `turso db tokens create <name>` → `TURSO_AUTH_TOKEN`.
 
-For PDF archives and uploaded property photos:
+If `npm run db:push` does not apply schema to your remote `libsql://` URL (tooling limitation), use `DATABASE_URL=file:./dev.db` for `db:push` locally (see `prisma/dev.db`), export SQL, and apply with `turso db shell` — see [Turso + Prisma](https://docs.turso.tech/sdk/ts/orm/prisma).
+
+## 3. Supabase Storage (optional)
+
+Only needed to store PDF binaries in a bucket:
 
 1. Create a Storage bucket named `knowledge-pdfs`.
 2. Keep the bucket private.
-3. Add `SUPABASE_SERVICE_ROLE_KEY` on the server only. Never expose it to the browser.
+3. Add `SUPABASE_SERVICE_ROLE_KEY` on the server only. Never expose to the browser.
 
-## 3. Database Schema and Demo Data
+## 4. Database schema and demo data
 
 Push the Prisma schema:
 
 ```powershell
+npm run check:db-env
 npm run db:push
 ```
 
@@ -86,7 +102,7 @@ npm run db:seed
 
 Important on Windows: because this project path contains `&`, use the npm scripts above. Avoid `npx prisma db seed` from this path because PowerShell/cmd can split the path and resolve Prisma from the wrong folder.
 
-## 4. Run Locally
+## 5. Run Locally
 
 ```powershell
 npm run dev
@@ -106,7 +122,7 @@ If Turbopack gives file-manifest errors on Windows:
 npm run dev:webpack
 ```
 
-## 5. Vercel Deployment
+## 6. Vercel Deployment
 
 1. Push the repository to GitHub.
 2. In Vercel, import the repository.
@@ -129,7 +145,7 @@ Required Vercel variables:
 
 - `OPENAI_API_KEY`
 - `DATABASE_URL`
-- `DIRECT_URL`
+- `TURSO_AUTH_TOKEN` (when `DATABASE_URL` is `libsql://`)
 - `DASHBOARD_GATEWAY_TOKEN`
 
 Recommended / feature variables:
@@ -141,10 +157,11 @@ Recommended / feature variables:
 - `OPENAI_REALTIME_VOICE`
 - `KNOWLEDGE_IMAGE_ALLOWED_HOSTS`
 
-After deploy, run schema migration from your local machine or CI:
+After deploy, run schema migration / seed from your local machine (or CI) against the same Turso database:
 
 ```powershell
 npm run db:push
+npm run db:seed
 ```
 
 Run seed only if you want demo data in production:
@@ -153,18 +170,18 @@ Run seed only if you want demo data in production:
 npm run db:seed
 ```
 
-## 6. Security Checklist
+## 7. Security Checklist
 
 - Use a long random `DASHBOARD_GATEWAY_TOKEN` (at least 32 characters; 64+ recommended).
 - Keep `.env` out of git.
-- Keep `SUPABASE_SERVICE_ROLE_KEY` only in server environments.
+- Keep `SUPABASE_SERVICE_ROLE_KEY` and `TURSO_AUTH_TOKEN` only in server environments.
 - Keep Supabase Storage private.
 - Use HTTPS in production. Vercel provides this automatically.
 - Rotate keys if they are ever shown in screenshots, commits, recordings, or logs.
 - Use Vercel Firewall / WAF or a managed rate limiter for serious production traffic.
 - Review admin access after deployment; there is one shared dashboard token by design.
 
-## 7. Voice Calling
+## 8. Voice Calling
 
 The voice call page is real browser audio:
 
@@ -178,16 +195,3 @@ The voice call page is real browser audio:
 Requirements:
 
 - HTTPS in production.
-- Microphone permission granted by the visitor.
-- Valid `OPENAI_API_KEY`.
-- Realtime model access for the account.
-
-## 8. Verification Commands
-
-```powershell
-node ./node_modules/typescript/bin/tsc --noEmit
-node ./node_modules/eslint/bin/eslint.js .
-npm run build
-```
-
-If `npm run lint` fails on Windows because of a path with `&`, use the direct ESLint command above from the app root.

@@ -128,7 +128,7 @@ export default async function AdminPage() {
         err instanceof Error ? err.message : "Unknown error while querying the database.";
     } else {
       dataLoadError =
-        "Database query failed. Check DATABASE_URL / DIRECT_URL and that Prisma schema is applied.";
+        "Database query failed. Check DATABASE_URL / TURSO_AUTH_TOKEN and that Prisma schema is applied.";
     }
     [customerInstructions, customerLocale, realtimeVoice, dashboardTheme, visitorUiPalette] =
       await Promise.all([

@@ -10,7 +10,7 @@
     "lint": "eslint",
     "db:push": "node node_modules/prisma/build/index.js generate && node node_modules/prisma/build/index.js db push",
     "db:seed": "node node_modules/prisma/build/index.js db seed",
-    "check:db-env": "node scripts/check-supabase-env.cjs"
+    "check:db-env": "node scripts/check-db-env.cjs"
   },
   "prisma": {
     "seed": "node prisma/seed.mjs"
@@ -21,6 +21,8 @@
     "@langchain/core": "^1.1.40",
     "@langchain/langgraph": "^1.2.9",
     "@langchain/openai": "^1.4.4",
+    "@libsql/client": "^0.8.1",
+    "@prisma/adapter-libsql": "^5.22.0",
     "@prisma/client": "^5.22.0",
     "@supabase/supabase-js": "^2.103.0",
     "ai": "^6.0.158",

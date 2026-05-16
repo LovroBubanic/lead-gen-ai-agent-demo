@@ -196,7 +196,7 @@ export async function executeShowListingImage(
   if (!doc) {
     return { ok: false, error: "Listing document not found." };
   }
-  const paths = asImagePathList(doc.imagePaths as Prisma.JsonValue | undefined);
+  const paths = asImagePathList(doc.imagePaths);
   const idx = input.imageIndex ?? 0;
   if (paths.length === 0) {
     return {
