@@ -608,6 +608,14 @@ export function RealtimeCallPanel({
         </div>
       </motion.header>
 
+      <div
+        role="note"
+        className="border-b border-[var(--border)] bg-[var(--surface-muted)] px-4 py-2 text-center text-[11px] leading-snug text-[var(--muted)]"
+      >
+        Demo app — example knowledge and data from a fictional UK estate agency.
+        Not a real company or live listings.
+      </div>
+
       <main className="relative mx-auto flex w-full max-w-2xl flex-1 items-center justify-center px-4 pb-44 pt-6">
         <motion.div
           layout

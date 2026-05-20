@@ -4,7 +4,7 @@ import { createClient } from "@libsql/client";
 import { PrismaLibSQL } from "@prisma/adapter-libsql";
 import { PrismaClient } from "@prisma/client";
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
+const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
 /** libsql resolves `file:` relative to cwd; Prisma CLI resolves relative to prisma/. */
 function toLibsqlFileUrl(databaseUrl: string): string {
@@ -55,6 +55,24 @@ function createClientInstance(): PrismaClient {
   );
 }
 
-export const prisma = globalForPrisma.prisma ?? createClientInstance();
+function getOrCreatePrisma(): PrismaClient {
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = createClientInstance();
+  }
+  return globalForPrisma.prisma;
+}
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+/**
+ * Lazy singleton: avoids instantiating Prisma (and reading env) during Next.js
+ * "Collecting page data" / static analysis when no DB call runs.
+ */
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop, _receiver) {
+    const inst = getOrCreatePrisma();
+    const value = Reflect.get(inst, prop as keyof PrismaClient, inst);
+    if (typeof value === "function") {
+      return (value as (...args: unknown[]) => unknown).bind(inst);
+    }
+    return value;
+  },
+});

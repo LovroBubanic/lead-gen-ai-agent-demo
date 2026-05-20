@@ -22,7 +22,6 @@ import {
 } from "react";
 import type { UIMessage } from "ai";
 import { AuroraBackground } from "@/components/ui/aurora-background";
-import { GradientText } from "@/components/ui/gradient-text";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { getCustomerUiMessages } from "@/lib/customer-ui-messages";
 import type { VisitorPaletteId } from "@/lib/visitor-ui-palettes";
@@ -318,14 +317,8 @@ export function ChatPanel({
       >
         <div className="mx-auto flex max-w-2xl items-center justify-between gap-3">
           <div className="leading-tight">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em]">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-600/35 bg-emerald-500/15 px-2 py-0.5 text-emerald-800 shadow-sm dark:border-emerald-400/40 dark:bg-emerald-500/20 dark:text-emerald-200">
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-70 dark:bg-emerald-400" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-600 dark:bg-emerald-400" />
-                </span>
-                {t.onlineBadge}
-              </span>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-[var(--muted)]">
+              {t.onlineBadge}
             </p>
             <p className="text-[15px] font-semibold tracking-tight">
               {t.liveChatHeader}
@@ -344,6 +337,14 @@ export function ChatPanel({
         </div>
       </motion.header>
 
+      <div
+        role="note"
+        className="border-b border-[var(--border)] bg-[var(--surface-muted)] px-4 py-2 text-center text-[11px] leading-snug text-[var(--muted)]"
+      >
+        Demo app — example knowledge and data from a fictional UK estate agency.
+        Not a real company or live listings.
+      </div>
+
       <main className="relative mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col overflow-hidden px-3 pb-40 pt-4 sm:px-4 sm:pt-5">
         <AnimatePresence initial={false}>
           {messages.length === 0 && (
@@ -354,8 +355,8 @@ export function ChatPanel({
               transition={{ type: "spring", stiffness: 320, damping: 28 }}
               className="flex min-h-0 flex-1 flex-col items-center justify-center gap-5 overflow-y-auto overscroll-y-contain px-1 py-6 text-center sm:gap-6 sm:py-8"
             >
-              <h2 className="text-2xl font-semibold tracking-tight sm:text-3xl">
-                <GradientText animated>{t.heroTitle}</GradientText>
+              <h2 className="text-2xl font-semibold tracking-tight text-[var(--foreground)] sm:text-3xl">
+                {t.heroTitle}
               </h2>
               <p className="max-w-md text-balance text-sm leading-relaxed text-[var(--muted)]">
                 {t.heroSub}
