@@ -58,8 +58,8 @@ SUPABASE_SERVICE_ROLE_KEY="..."
 Optional Realtime voice variables:
 
 ```env
-OPENAI_REALTIME_MODEL="gpt-realtime"
-OPENAI_REALTIME_TRANSCRIBE_MODEL="gpt-4o-mini-transcribe"
+OPENAI_REALTIME_MODEL="gpt-realtime-2.1"
+OPENAI_REALTIME_TRANSCRIBE_MODEL="gpt-transcribe"
 OPENAI_REALTIME_VOICE="marin"
 ```
 

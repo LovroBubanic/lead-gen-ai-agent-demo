@@ -101,10 +101,12 @@ export function createSalesChatGraph(
   locale: string = "en",
   calendarBlock: string = ""
 ) {
-  const modelId = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
+  const modelId = process.env.OPENAI_MODEL?.trim() || "gpt-6-luna";
+  // gpt-6-luna is a reasoning model: Chat Completions only allows tool calls
+  // with reasoning effort "none" (which also keeps latency/cost lowest).
   const llm = new ChatOpenAI({
     model: modelId,
-    temperature: 0,
+    reasoning: { effort: "none" },
   });
   return createReactAgent({
     llm,

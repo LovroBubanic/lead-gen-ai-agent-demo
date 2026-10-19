@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     const client = new OpenAIClient({ apiKey: process.env.OPENAI_API_KEY });
     const upload = await toFile(audio, "voice-note.webm");
     const result = await client.audio.transcriptions.create({
-      model: "whisper-1",
+      model: "gpt-transcribe",
       file: upload,
       language: locale,
     });

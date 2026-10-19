@@ -70,7 +70,7 @@ export async function buildRealtimeCallSessionJson(
   opts: RealtimeCallSessionOptions
 ): Promise<string> {
   const model =
-    process.env.OPENAI_REALTIME_MODEL?.trim() || "gpt-realtime";
+    process.env.OPENAI_REALTIME_MODEL?.trim() || "gpt-realtime-2.1";
   const [kb, ownerInstructions, sessionLocale, savedVoice, calendarBlock] =
     await Promise.all([
       buildKnowledgeContext(),
@@ -95,7 +95,7 @@ export async function buildRealtimeCallSessionJson(
 
   const transcribeModel =
     process.env.OPENAI_REALTIME_TRANSCRIBE_MODEL?.trim() ||
-    "gpt-4o-mini-transcribe";
+    "gpt-transcribe";
   if (process.env.OPENAI_REALTIME_INPUT_TRANSCRIPTION !== "0") {
     input.transcription = {
       model: transcribeModel,

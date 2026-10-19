@@ -13,7 +13,7 @@ This README always reflects the **current** behaviour of the code in this folder
   - Browse **leads** captured by the AI (`captureLead` tool).
   - Maintain a **knowledge base** (typed notes + **PDF uploads**). Extracted text is what the model sees today (full-context injection, not vector RAG).
   - View a **meetings list** fed by the **`bookMeeting`** tool when the agent records a confirmed slot.
-- **API** — `POST /api/chat` powers the widget; it uses **OpenAI** (`gpt-4o-mini` by default) and tools that write to your database.
+- **API** — `POST /api/chat` powers the widget; it uses **OpenAI** (`gpt-6-luna` by default) and tools that write to your database.
 
 Planned for later versions (not fully implemented here): Pinecone-style RAG, Google Calendar sync, full auth beyond the gateway token, rate limits.
 
@@ -70,7 +70,7 @@ Copy **`.env.example`** → **`.env`** in this folder (`Project/.env`). Next.js 
 | Variable | Required | Purpose |
 |----------|----------|---------|
 | `OPENAI_API_KEY` | **Yes** (for chat) | Server-side calls to OpenAI. |
-| `OPENAI_MODEL` | No | Chat model id for LangGraph / ChatOpenAI (default **`gpt-4o-mini`**). |
+| `OPENAI_MODEL` | No | Chat model id for LangGraph / ChatOpenAI (default **`gpt-6-luna`**). |
 | `DATABASE_URL` | **Yes** | **`libsql://…`** (Turso) or **`file:./dev.db`** (local SQLite under `prisma/`). |
 | `TURSO_AUTH_TOKEN` | **Yes** when using Turso | Database auth token from `turso db tokens create`. Not used for `file:` URLs. |
 | `DASHBOARD_GATEWAY_TOKEN` | **Yes in production** | Long secret the owner types at `/admin/login`. Also used to sign the **httpOnly session cookie** (HS256 via `jose`). **Minimum 32 characters.** |
