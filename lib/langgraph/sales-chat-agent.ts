@@ -104,9 +104,12 @@ export function createSalesChatGraph(
   const modelId = process.env.OPENAI_MODEL?.trim() || "gpt-6-luna";
   // gpt-6-luna is a reasoning model: Chat Completions only allows tool calls
   // with reasoning effort "none" (which also keeps latency/cost lowest).
+  // Sent via modelKwargs because @langchain/openai only forwards `reasoning`
+  // for model names it recognises (o*, gpt-5*), so it silently drops it for
+  // gpt-6-* and the API rejects the tool calls.
   const llm = new ChatOpenAI({
     model: modelId,
-    reasoning: { effort: "none" },
+    modelKwargs: { reasoning_effort: "none" },
   });
   return createReactAgent({
     llm,
